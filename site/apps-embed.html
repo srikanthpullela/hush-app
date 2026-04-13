@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Splec — Apps</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+html,body{
+  width:100%;min-height:100vh;
+  background:#06060a;color:#fafafa;
+  font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+}
+
+/* ═══ HERO ═══ */
+.hero{
+  width:100%;min-height:100vh;
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  padding:60px 40px;
+  position:relative;overflow:hidden;
+}
+
+/* Mesh gradient */
+.hero::before{
+  content:'';position:absolute;inset:0;
+  background:
+    radial-gradient(ellipse 80% 60% at 50% 0%, rgba(124,58,237,.15) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 20% 50%, rgba(59,130,246,.08) 0%, transparent 50%),
+    radial-gradient(ellipse 60% 50% at 80% 70%, rgba(168,85,247,.08) 0%, transparent 50%);
+  pointer-events:none;
+}
+
+/* Dot grid */
+.hero::after{
+  content:'';position:absolute;inset:0;opacity:.4;
+  background-image:radial-gradient(rgba(255,255,255,.07) 1px, transparent 1px);
+  background-size:32px 32px;
+  mask-image:radial-gradient(ellipse 70% 70% at center, black, transparent);
+  -webkit-mask-image:radial-gradient(ellipse 70% 70% at center, black, transparent);
+  pointer-events:none;
+}
+
+.hero>*{position:relative;z-index:1}
+
+/* ═══ HEADER ═══ */
+.header{text-align:center;margin-bottom:64px;max-width:600px}
+
+.badge{
+  display:inline-flex;align-items:center;gap:8px;
+  padding:8px 20px;border-radius:100px;
+  background:rgba(124,58,237,.08);
+  border:1px solid rgba(124,58,237,.15);
+  color:#a78bfa;font-size:12px;font-weight:600;
+  letter-spacing:1px;text-transform:uppercase;
+  margin-bottom:28px;
+}
+.badge-dot{
+  width:7px;height:7px;border-radius:50%;
+  background:#a78bfa;
+  animation:pulse 2s ease-in-out infinite;
+}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.3;transform:scale(.8)}}
+
+.hero-title{
+  font-size:clamp(40px,6vw,64px);
+  font-weight:900;letter-spacing:-2px;
+  line-height:1.05;margin-bottom:20px;
+  color:#fafafa;
+}
+.hero-title span{
+  background:linear-gradient(135deg,#c084fc 0%,#818cf8 40%,#38bdf8 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  background-clip:text;
+}
+
+.hero-sub{
+  font-size:18px;color:#52525b;line-height:1.7;font-weight:400;
+}
+
+/* ═══ APP CARD ═══ */
+.app-card{
+  width:100%;max-width:800px;
+  background:rgba(255,255,255,.02);
+  border:1px solid rgba(255,255,255,.06);
+  border-radius:32px;
+  padding:56px;
+  display:grid;
+  grid-template-columns:auto 1fr;
+  gap:48px;
+  align-items:start;
+  text-align:left;
+  position:relative;
+  overflow:hidden;
+  transition:border-color .4s ease,box-shadow .4s ease;
+}
+.app-card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(124,58,237,.3),rgba(56,189,248,.3),transparent);
+}
+.app-card:hover{
+  border-color:rgba(124,58,237,.12);
+  box-shadow:0 0 80px rgba(124,58,237,.06);
+}
+
+/* Left column */
+.app-left{display:flex;flex-direction:column;align-items:center;gap:20px}
+
+.app-icon{
+  width:112px;height:112px;border-radius:30px;
+  background:linear-gradient(135deg,#7c3aed 0%,#4f46e5 50%,#3b82f6 100%);
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,.1) inset,
+    0 12px 40px rgba(124,58,237,.35),
+    0 2px 8px rgba(0,0,0,.3);
+  position:relative;
+}
+.app-icon::after{
+  content:'';position:absolute;inset:0;border-radius:30px;
+  background:linear-gradient(180deg,rgba(255,255,255,.12) 0%,transparent 50%);
+  pointer-events:none;
+}
+.app-icon svg{width:58px;height:58px;position:relative;z-index:1;filter:drop-shadow(0 2px 4px rgba(0,0,0,.15))}
+
+.platforms{display:flex;gap:8px}
+.plat{
+  font-size:11px;color:#52525b;font-weight:500;
+  padding:5px 12px;border-radius:8px;
+  background:rgba(255,255,255,.03);
+  border:1px solid rgba(255,255,255,.05);
+  display:flex;align-items:center;gap:5px;
+  transition:border-color .2s;
+}
+.plat:hover{border-color:rgba(255,255,255,.1)}
+.plat svg{width:12px;height:12px;opacity:.4}
+
+/* Right column */
+.app-right{}
+
+.app-name{
+  font-size:32px;font-weight:800;color:#fafafa;
+  letter-spacing:-.5px;margin-bottom:6px;
+}
+.app-ver{
+  display:inline-block;font-size:11px;color:#a78bfa;font-weight:600;
+  background:rgba(124,58,237,.1);border:1px solid rgba(124,58,237,.12);
+  padding:3px 12px;border-radius:20px;margin-bottom:18px;
+}
+.app-desc{
+  font-size:16px;color:#71717a;line-height:1.8;
+  margin-bottom:28px;max-width:420px;
+}
+
+/* Features */
+.feats{display:flex;flex-wrap:wrap;gap:20px;margin-bottom:36px}
+.feat{
+  display:flex;align-items:center;gap:8px;
+  font-size:13px;color:#71717a;font-weight:500;
+}
+.feat-check{
+  width:20px;height:20px;border-radius:6px;
+  background:rgba(52,211,153,.1);border:1px solid rgba(52,211,153,.15);
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.feat-check svg{width:12px;height:12px;color:#34d399}
+
+/* Download row */
+.dl-row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+
+.dl-btn{
+  display:inline-flex;align-items:center;gap:10px;
+  padding:16px 32px;border:none;border-radius:14px;
+  font-size:15px;font-weight:600;cursor:pointer;
+  text-decoration:none;font-family:inherit;
+  transition:all .3s cubic-bezier(.16,1,.3,1);
+}
+.dl-primary{
+  background:linear-gradient(135deg,#7c3aed,#6366f1);color:#fff;
+  box-shadow:0 0 0 1px rgba(255,255,255,.1) inset,0 6px 24px rgba(124,58,237,.3);
+}
+.dl-primary:hover{
+  box-shadow:0 0 0 1px rgba(255,255,255,.15) inset,0 10px 40px rgba(124,58,237,.45);
+  transform:translateY(-2px);
+}
+.dl-primary:active{transform:translateY(0)}
+
+.dl-secondary{
+  background:rgba(255,255,255,.03);color:#71717a;
+  border:1px solid rgba(255,255,255,.07);padding:16px 28px;
+}
+.dl-secondary:hover{background:rgba(255,255,255,.06);color:#a1a1aa;border-color:rgba(255,255,255,.1)}
+
+.os-icon{width:18px;height:18px;display:inline-block}
+
+/* Footer */
+.footer{
+  margin-top:48px;text-align:center;
+  padding-top:32px;
+  width:100%;max-width:800px;
+  border-top:1px solid rgba(255,255,255,.04);
+}
+.footer p{font-size:13px;color:#27272a}
+.footer a{color:#52525b;text-decoration:none;transition:color .2s}
+.footer a:hover{color:#a78bfa}
+
+/* ═══ RESPONSIVE ═══ */
+@media(max-width:700px){
+  .hero{padding:40px 20px}
+  .header{margin-bottom:40px}
+  .app-card{
+    grid-template-columns:1fr;
+    padding:36px 28px;gap:28px;
+    text-align:center;
+  }
+  .app-left{align-items:center}
+  .app-icon{width:88px;height:88px;border-radius:24px}
+  .app-icon svg{width:46px;height:46px}
+  .app-right{text-align:center}
+  .app-desc{margin-left:auto;margin-right:auto}
+  .feats{justify-content:center}
+  .dl-row{flex-direction:column;width:100%}
+  .dl-btn{width:100%;justify-content:center}
+  .hero-sub{font-size:16px}
+}
+</style>
+</head>
+<body>
+
+<section class="hero">
+
+  <div class="header">
+    <div class="badge"><span class="badge-dot"></span> Applications</div>
+    <h1 class="hero-title">Built for <span>Productivity</span></h1>
+    <p class="hero-sub">Free, lightweight desktop tools that stay out of your way — so you can focus on what matters.</p>
+  </div>
+
+  <div class="app-card" id="app-hush">
+    <div class="app-left">
+      <div class="app-icon">
+        <svg viewBox="0 0 64 64" fill="none">
+          <path d="M32 8a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5Z" fill="#fff"/>
+          <path d="M32 12c-7 0-14 5-14 14v6c0 3-2 5-4 7h36c-2-2-4-4-4-7v-6c0-9-7-14-14-14Z" fill="#fff"/>
+          <rect x="12" y="39" width="40" height="4" rx="2" fill="#fff"/>
+          <circle cx="32" cy="50" r="4" fill="#fff"/>
+        </svg>
+      </div>
+      <div class="platforms">
+        <span class="plat"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11"/></svg> macOS</span>
+        <span class="plat"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 12V6.5l8-1.1V12H3zm0 .5h8v6.6l-8-1.1V12.5zM11.5 12V5.3l9.5-1.3V12h-9.5zm0 .5H21v7.5l-9.5-1.3V12.5z"/></svg> Windows</span>
+      </div>
+    </div>
+
+    <div class="app-right">
+      <h2 class="app-name">Hush</h2>
+      <span class="app-ver">v1.0.0</span>
+      <p class="app-desc">One-click Do Not Disturb for your desktop. Sits in your menu bar and auto-silences notifications when you join a meeting.</p>
+
+      <div class="feats">
+        <span class="feat"><span class="feat-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span> Free &amp; Open Source</span>
+        <span class="feat"><span class="feat-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span> Lightweight (~3 MB)</span>
+        <span class="feat"><span class="feat-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span> No Account Needed</span>
+      </div>
+
+      <div class="dl-row">
+        <a id="dl-hush" class="dl-btn dl-primary" href="#">
+          <span id="dl-hush-icon"></span>
+          <span id="dl-hush-text">Download</span>
+        </a>
+        <a id="dl-hush-alt" class="dl-btn dl-secondary" href="#">
+          <span id="dl-hush-alt-text"></span>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <p>More apps coming soon &middot; <a href="https://splec.in">splec.in</a></p>
+  </div>
+
+</section>
+
+<script>
+(function(){
+  var c={
+    mac:{url:'https://github.com/splecdevelopers/hush-app/releases/latest/download/Hush_1.0.0_aarch64.dmg',label:'Download for Mac',alt:'Windows (.exe)',size:'3.1 MB'},
+    win:{url:'https://github.com/splecdevelopers/hush-app/releases/latest/download/Hush_1.0.0_x64-setup.exe',label:'Download for Windows',alt:'macOS (.dmg)',size:'~8 MB'}
+  };
+  var isMac=/Mac|iPhone|iPad|iPod/i.test(navigator.userAgent||'');
+  var p=isMac?c.mac:c.win, s=isMac?c.win:c.mac;
+  var macI='<svg class="os-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11"/></svg>';
+  var winI='<svg class="os-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M3 12V6.5l8-1.1V12H3zm0 .5h8v6.6l-8-1.1V12.5zM11.5 12V5.3l9.5-1.3V12h-9.5zm0 .5H21v7.5l-9.5-1.3V12.5z"/></svg>';
+  document.getElementById('dl-hush').href=p.url;
+  document.getElementById('dl-hush-text').textContent=p.label+' ('+p.size+')';
+  document.getElementById('dl-hush-icon').innerHTML=isMac?macI:winI;
+  document.getElementById('dl-hush-alt').href=s.url;
+  document.getElementById('dl-hush-alt-text').textContent=s.alt;
+})();
+</script>
+
+</body>
+</html>

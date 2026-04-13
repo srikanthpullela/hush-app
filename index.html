@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="stylesheet" href="/src/styles.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hush — Setup</title>
+    <script type="module" src="/src/main.ts" defer></script>
+  </head>
+
+  <body>
+    <div class="bg-glow bg-glow-1"></div>
+    <div class="bg-glow bg-glow-2"></div>
+
+    <main class="setup-container">
+      <!-- HEADER -->
+      <div class="setup-header">
+        <div class="app-icon-wrap">
+          <div class="app-icon-ring">
+            <svg class="app-icon" width="40" height="40" viewBox="0 0 64 64" fill="none">
+              <path d="M32 8a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5Z" fill="#fff"/>
+              <path d="M32 12c-7 0-14 5-14 14v6c0 3-2 5-4 7h36c-2-2-4-4-4-7v-6c0-9-7-14-14-14Z" fill="#fff"/>
+              <rect x="12" y="39" width="40" height="4" rx="2" fill="#fff"/>
+              <circle cx="32" cy="50" r="4" fill="#fff"/>
+            </svg>
+          </div>
+        </div>
+        <h1>Welcome to <span class="brand">Hush</span></h1>
+        <p class="subtitle">One-click silence for your Mac notifications</p>
+      </div>
+
+      <!-- AUTO SETUP (spinner) -->
+      <div id="auto-setup" class="setup-section" style="display: none">
+        <div class="card glass">
+          <div class="spinner"></div>
+          <p class="spinner-text">Setting up automatically&hellip;</p>
+        </div>
+      </div>
+
+      <!-- MANUAL SETUP -->
+      <div id="manual-setup" class="setup-section" style="display: none">
+        <div class="card glass">
+          <p class="instruction">
+            Hush needs two shortcuts to silently toggle<br />
+            Do Not Disturb. Create them in Shortcuts&nbsp;app:
+          </p>
+
+          <div class="shortcut-steps">
+            <!-- Step 1 -->
+            <div class="step" id="step-on">
+              <div class="step-icon-wrap">
+                <span id="check-on" class="step-icon pending">1</span>
+              </div>
+              <div class="step-body">
+                <strong>Hush On</strong>
+                <span class="step-detail">
+                  New Shortcut &rarr; <em>Set Focus</em> &rarr; Do Not Disturb &rarr; <strong>Turn On</strong><br/>
+                  Rename shortcut to <code>Hush On</code>
+                </span>
+              </div>
+            </div>
+
+            <!-- Step 2 -->
+            <div class="step" id="step-off">
+              <div class="step-icon-wrap">
+                <span id="check-off" class="step-icon pending">2</span>
+              </div>
+              <div class="step-body">
+                <strong>Hush Off</strong>
+                <span class="step-detail">
+                  New Shortcut &rarr; <em>Set Focus</em> &rarr; Do Not Disturb &rarr; <strong>Turn Off</strong><br/>
+                  Rename shortcut to <code>Hush Off</code>
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div class="btn-row">
+            <button id="open-shortcuts-btn" class="btn btn-ghost">
+              <span class="btn-icon">&#xF8FF;</span> Open Shortcuts
+            </button>
+          </div>
+
+          <div class="step-divider"></div>
+
+          <!-- Step 3 — Silence Shortcuts banners -->
+          <div class="step" id="step-notif">
+            <div class="step-icon-wrap">
+              <span class="step-icon pending">3</span>
+            </div>
+            <div class="step-body">
+              <strong>Silence Shortcuts Banners</strong>
+              <span class="step-detail">
+                <em>System Settings</em> &rarr; <em>Notifications</em> &rarr; <em>Shortcuts</em><br/>
+                Turn off <strong>Allow Notifications</strong>
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <button id="done-btn" class="btn btn-primary btn-wide" disabled>
+          Get Started
+        </button>
+      </div>
+
+      <!-- ALL DONE -->
+      <div id="all-done" class="setup-section" style="display: none">
+        <div class="card glass done-card">
+          <div class="done-check">
+            <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
+              <circle cx="32" cy="32" r="30" stroke="#34d399" stroke-width="3" opacity="0.25"/>
+              <circle cx="32" cy="32" r="30" stroke="#34d399" stroke-width="3"
+                stroke-dasharray="188" stroke-dashoffset="188" class="done-circle"/>
+              <path d="M20 33l8 8 16-16" stroke="#34d399" stroke-width="3.5"
+                stroke-linecap="round" stroke-linejoin="round"
+                stroke-dasharray="40" stroke-dashoffset="40" class="done-tick"/>
+            </svg>
+          </div>
+          <h2>You're all set!</h2>
+          <p class="done-sub">Click the bell in your menu bar to toggle DND.</p>
+        </div>
+      </div>
+    </main>
+  </body>
+</html>
