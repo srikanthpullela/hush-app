@@ -123,23 +123,57 @@ fn play_sound(hushed: bool) {
 }
 
 fn start_meeting_poll(app: AppHandle) {
-    std::thread::spawn(move || loop {
-        std::thread::sleep(std::time::Duration::from_secs(3));
+    std::thread::spawn(move || {
+        // Debounce: require 3 consecutive matching polls before toggling.
+        let mut consecutive_meeting = 0u32;
+        let mut consecutive_no_meeting = 0u32;
+        const DEBOUNCE_COUNT: u32 = 3; // 3 polls × 5s = 15s before toggle
 
-        if !AUTO_HUSH_ENABLED.load(Ordering::Relaxed) {
-            continue;
-        }
+        let mut last_poll = std::time::Instant::now();
 
-        let in_meeting = meeting::is_in_meeting();
-        let hushed = IS_HUSHED.load(Ordering::Relaxed);
-        let auto_hushed = AUTO_HUSHED_BY_MEETING.load(Ordering::Relaxed);
+        loop {
+            std::thread::sleep(std::time::Duration::from_secs(5));
 
-        if in_meeting && !hushed {
-            AUTO_HUSHED_BY_MEETING.store(true, Ordering::Relaxed);
-            toggle_hush(&app, Some(true));
-        } else if !in_meeting && hushed && auto_hushed {
-            AUTO_HUSHED_BY_MEETING.store(false, Ordering::Relaxed);
-            toggle_hush(&app, Some(false));
+            if !AUTO_HUSH_ENABLED.load(Ordering::Relaxed) {
+                consecutive_meeting = 0;
+                consecutive_no_meeting = 0;
+                last_poll = std::time::Instant::now();
+                continue;
+            }
+
+            // Detect sleep/wake: if >15s passed since last poll, the system
+            // was likely asleep. Reset counters and skip this cycle — system
+            // state is unreliable right after wake.
+            let elapsed = last_poll.elapsed().as_secs();
+            last_poll = std::time::Instant::now();
+            if elapsed > 15 {
+                eprintln!("[Hush] System wake detected ({}s gap) — skipping cycle", elapsed);
+                consecutive_meeting = 0;
+                consecutive_no_meeting = 0;
+                continue;
+            }
+
+            let in_meeting = meeting::is_in_meeting();
+            let hushed = IS_HUSHED.load(Ordering::Relaxed);
+            let auto_hushed = AUTO_HUSHED_BY_MEETING.load(Ordering::Relaxed);
+
+            if in_meeting {
+                consecutive_meeting += 1;
+                consecutive_no_meeting = 0;
+            } else {
+                consecutive_no_meeting += 1;
+                consecutive_meeting = 0;
+            }
+
+            if in_meeting && !hushed && consecutive_meeting >= DEBOUNCE_COUNT {
+                eprintln!("[Hush] AUTO-HUSH ON — meeting detected for {}s", consecutive_meeting * 5);
+                AUTO_HUSHED_BY_MEETING.store(true, Ordering::Relaxed);
+                toggle_hush(&app, Some(true));
+            } else if !in_meeting && hushed && auto_hushed && consecutive_no_meeting >= DEBOUNCE_COUNT {
+                eprintln!("[Hush] AUTO-HUSH OFF — no meeting for {}s", consecutive_no_meeting * 5);
+                AUTO_HUSHED_BY_MEETING.store(false, Ordering::Relaxed);
+                toggle_hush(&app, Some(false));
+            }
         }
     });
 }

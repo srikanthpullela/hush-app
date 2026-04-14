@@ -1,9 +1,70 @@
 use std::process::Command;
 
-/// Detect if user is currently in a meeting (mic/camera active, screen sharing,
-/// or meeting app with active UDP streams).
+/// Detect if user is currently in a meeting.
+/// Triggers ONLY when:
+///   1. A known meeting app is running AND screen sharing is active, OR
+///   2. A known meeting app is running AND mic/camera is actively in use
+///
+/// A meeting app MUST be running for any auto-detection to trigger.
+/// Manual toggle via tray icon always works regardless.
 pub fn is_in_meeting() -> bool {
-    check_mic_camera() || check_screen_sharing() || check_meeting_connections()
+    let meeting_app = is_meeting_app_running();
+    if !meeting_app {
+        return false;
+    }
+
+    let screen_sharing = check_screen_sharing();
+    let mic_camera = check_mic_camera();
+
+    let result = screen_sharing || mic_camera;
+
+    eprintln!(
+        "[Hush] meeting check: meeting_app={}, screen_sharing={}, mic_camera={} → {}",
+        meeting_app, screen_sharing, mic_camera, result
+    );
+
+    result
+}
+
+/// Check if a known meeting app (Teams, Zoom, Webex, Slack, Google Meet via browser) is running.
+fn is_meeting_app_running() -> bool {
+    #[cfg(target_os = "macos")]
+    {
+        for proc in &["MSTeams", "zoom.us", "Webex", "Slack", "FaceTime"] {
+            if Command::new("/usr/bin/pgrep")
+                .args(["-x", proc])
+                .output()
+                .map(|o| o.status.success())
+                .unwrap_or(false)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        let apps = ["Teams", "Zoom", "Webex", "Slack"];
+        for app in &apps {
+            let script = format!(
+                "Get-Process -Name '*{}*' -ErrorAction SilentlyContinue | Select-Object -First 1",
+                app
+            );
+            if Command::new("powershell")
+                .args(["-NoProfile", "-NonInteractive", "-Command", &script])
+                .output()
+                .map(|o| !o.stdout.is_empty())
+                .unwrap_or(false)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+    false
 }
 
 /// Check if mic or camera is in use by another app.
