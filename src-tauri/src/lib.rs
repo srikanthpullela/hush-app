@@ -1,4 +1,5 @@
 mod dnd;
+mod meeting;
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::{
@@ -10,6 +11,10 @@ use tauri::{
 
 static IS_HUSHED: AtomicBool = AtomicBool::new(false);
 static PLAY_SOUND: AtomicBool = AtomicBool::new(true);
+static AUTO_HUSHED_BY_MEETING: AtomicBool = AtomicBool::new(false);
+/// Set when user manually overrides DND during a meeting.
+/// Prevents auto re-enabling until screen sharing stops and starts again.
+static MANUAL_OVERRIDE: AtomicBool = AtomicBool::new(false);
 
 fn set_tray_icon(app: &AppHandle, icon_file: &str, tooltip: &str) {
     if let Some(tray) = app.tray_by_id("hush-tray") {
@@ -74,6 +79,14 @@ fn toggle_hush(app: &AppHandle, force_state: Option<bool>) {
         return;
     }
 
+    // If this is a manual toggle (force_state == None), set manual override
+    // so the poll loop won't re-enable DND during this screen share session
+    if force_state.is_none() {
+        MANUAL_OVERRIDE.store(true, Ordering::Relaxed);
+        AUTO_HUSHED_BY_MEETING.store(false, Ordering::Relaxed);
+        eprintln!("[Hush] Manual toggle — auto-hush paused until next screen share");
+    }
+
     // Show loading spinner on tray while shortcut runs
     IS_HUSHED.store(new_state, Ordering::Relaxed);
     set_tray_icon(app, "icons/tray-loading.png", "Hush — Switching…");
@@ -119,6 +132,68 @@ fn play_sound(hushed: bool) {
     }
 }
 
+fn start_meeting_poll(app: AppHandle) {
+    std::thread::spawn(move || {
+        // Debounce: require 3 consecutive matching polls (15s) before toggling.
+        let mut consecutive_meeting = 0u32;
+        let mut consecutive_no_meeting = 0u32;
+        const DEBOUNCE_COUNT: u32 = 3;
+
+        let mut last_poll = std::time::Instant::now();
+
+        loop {
+            std::thread::sleep(std::time::Duration::from_secs(5));
+
+            // Detect sleep/wake: if >30s passed, system was asleep.
+            // Skip this cycle — state may be stale.
+            let elapsed = last_poll.elapsed().as_secs();
+            last_poll = std::time::Instant::now();
+            if elapsed > 30 {
+                eprintln!("[Hush] System wake detected ({}s gap) — resetting", elapsed);
+                consecutive_meeting = 0;
+                consecutive_no_meeting = 0;
+                continue;
+            }
+
+            let in_meeting = meeting::is_in_meeting();
+            let hushed = IS_HUSHED.load(Ordering::Relaxed);
+            let auto_hushed = AUTO_HUSHED_BY_MEETING.load(Ordering::Relaxed);
+
+            if in_meeting {
+                consecutive_meeting += 1;
+                consecutive_no_meeting = 0;
+            } else {
+                consecutive_no_meeting += 1;
+                consecutive_meeting = 0;
+                // Screen sharing stopped — clear manual override so next
+                // screen share session will auto-hush again
+                if MANUAL_OVERRIDE.load(Ordering::Relaxed) && consecutive_no_meeting >= DEBOUNCE_COUNT {
+                    MANUAL_OVERRIDE.store(false, Ordering::Relaxed);
+                    eprintln!("[Hush] Manual override cleared — ready for next screen share");
+                }
+            }
+
+            // Skip auto-hush if user manually overrode during this session
+            if MANUAL_OVERRIDE.load(Ordering::Relaxed) {
+                continue;
+            }
+
+            // Auto-hush ON: screen sharing detected for 15s straight
+            if in_meeting && !hushed && consecutive_meeting >= DEBOUNCE_COUNT {
+                eprintln!("[Hush] AUTO-HUSH ON — screen sharing for {}s", consecutive_meeting * 5);
+                AUTO_HUSHED_BY_MEETING.store(true, Ordering::Relaxed);
+                toggle_hush(&app, Some(true));
+            }
+            // Auto-hush OFF: screen sharing stopped for 15s AND we were the ones who turned it on
+            else if !in_meeting && hushed && auto_hushed && consecutive_no_meeting >= DEBOUNCE_COUNT {
+                eprintln!("[Hush] AUTO-HUSH OFF — screen sharing stopped for {}s", consecutive_no_meeting * 5);
+                AUTO_HUSHED_BY_MEETING.store(false, Ordering::Relaxed);
+                toggle_hush(&app, Some(false));
+            }
+        }
+    });
+}
+
 // MARK: - Tauri Commands for Setup UI
 
 #[derive(serde::Serialize)]
@@ -149,7 +224,8 @@ fn setup_complete(app: AppHandle) {
     if let Some(win) = app.get_webview_window("setup") {
         let _ = win.hide();
     }
-    eprintln!("[Hush] Setup complete — ready for manual toggle");
+    eprintln!("[Hush] Setup complete — starting screen share detection");
+    start_meeting_poll(app);
 }
 
 fn needs_setup() -> bool {
@@ -198,11 +274,12 @@ pub fn run() {
                 // Window is auto-created from config but hidden; show it
                 show_setup_window(app.handle());
             } else {
-                eprintln!("[Hush] Shortcuts found — ready for manual toggle");
+                eprintln!("[Hush] Shortcuts found — starting screen share detection");
                 // Hide setup window since shortcuts exist
                 if let Some(win) = app.get_webview_window("setup") {
                     let _ = win.hide();
                 }
+                start_meeting_poll(app.handle().clone());
             }
 
             Ok(())
