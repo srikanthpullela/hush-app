@@ -6,60 +6,30 @@ static DETECTOR_BIN: OnceLock<Option<PathBuf>> = OnceLock::new();
 
 /// Swift detection script — compiled to a binary on first run for speed.
 ///
-/// Checks two signals (in priority order):
-///   1. Meeting app window title contains "meeting" → in a meeting/call
-///   2. Meeting app running + system microphone active → on a call
+/// Detection: meeting app window title contains "meeting" → in a meeting/call.
 ///
-/// NOT used: layer-3 overlay windows (proven stale on macOS 26 — they
-/// persist long after the meeting ends, causing false DND activation).
+/// NOT used:
+///   - Microphone (CoreAudio) — false positives from voice-input apps
+///     like VoiceSync when Teams/Zoom run in background.
+///   - Layer-3 overlay windows — stale on macOS 26, persist after meetings.
 const DETECT_SCRIPT: &str = r#"
 import CoreGraphics
-import CoreAudio
 import Foundation
 
 let list = CGWindowListCopyWindowInfo([.optionAll], kCGNullWindowID) as? [[String: Any]] ?? []
 let meetingApps = ["Microsoft Teams", "zoom.us", "Zoom", "Webex", "Cisco Webex", "Slack", "FaceTime"]
 var hasMeetingWindow = false
-var meetingAppRunning = false
 
 for w in list {
     let owner = w["kCGWindowOwnerName"] as? String ?? ""
     let name = (w["kCGWindowName"] as? String ?? "").lowercased()
     let isMeetingApp = meetingApps.contains(where: { owner.contains($0) })
     guard isMeetingApp else { continue }
-    meetingAppRunning = true
-    if name.contains("meeting") { hasMeetingWindow = true }
+    if name.contains("meeting") { hasMeetingWindow = true; break }
 }
 
-var micInUse = false
-if meetingAppRunning {
-    var dev: AudioDeviceID = 0
-    var sz = UInt32(MemoryLayout<AudioDeviceID>.size)
-    var a1 = AudioObjectPropertyAddress(
-        mSelector: kAudioHardwarePropertyDefaultInputDevice,
-        mScope: kAudioObjectPropertyScopeGlobal,
-        mElement: kAudioObjectPropertyElementMain
-    )
-    AudioObjectGetPropertyData(
-        AudioObjectID(kAudioObjectSystemObject), &a1, 0, nil, &sz, &dev
-    )
-    var running: UInt32 = 0
-    sz = UInt32(MemoryLayout<UInt32>.size)
-    var a2 = AudioObjectPropertyAddress(
-        mSelector: kAudioDevicePropertyDeviceIsRunningSomewhere,
-        mScope: kAudioObjectPropertyScopeGlobal,
-        mElement: kAudioObjectPropertyElementMain
-    )
-    AudioObjectGetPropertyData(dev, &a2, 0, nil, &sz, &running)
-    micInUse = running > 0
-}
-
-var signals: [String] = []
-if hasMeetingWindow { signals.append("meeting-window") }
-if micInUse { signals.append("mic-active") }
-
-if meetingAppRunning && !signals.isEmpty {
-    print("active:\(signals.joined(separator: ","))")
+if hasMeetingWindow {
+    print("active:meeting-window")
 } else {
     print("none")
 }
@@ -105,10 +75,8 @@ fn get_detector() -> Option<&'static PathBuf> {
 
 /// Check if user is in an active meeting or call.
 ///
-/// Returns true if a meeting app (Teams/Zoom/Webex/Slack/FaceTime) is running
-/// AND either:
-///   - A window title contains "meeting" (formal meeting/call)
-///   - The system microphone is active (any type of call)
+/// Returns true if a meeting app (Teams/Zoom/Webex/Slack/FaceTime) has
+/// a window whose title contains "meeting".
 pub fn is_in_meeting() -> bool {
     #[cfg(target_os = "macos")]
     {

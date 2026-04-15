@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Apps & Extensions | Tulz</title>
+<meta name="description" content="Free browser extensions and desktop apps built for productivity. Salesforce developer tools, CPQ debugger, and more.">
+<meta property="og:title" content="Apps & Extensions | Tulz">
+<meta property="og:description" content="Free browser extensions and desktop apps built for productivity.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://www.tulz.org/products">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* ── Reset ── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+:root{
+  --bg:#ffffff;
+  --bg-secondary:#f8fafc;
+  --text:#0f172a;
+  --text-secondary:#475569;
+  --text-muted:#94a3b8;
+  --border:#e2e8f0;
+  --border-hover:#cbd5e1;
+  --accent:#4f46e5;
+  --accent-light:#eef2ff;
+  --accent-dark:#3730a3;
+  --green:#059669;
+  --green-light:#ecfdf5;
+  --orange:#ea580c;
+  --orange-light:#fff7ed;
+  --radius:16px;
+  --radius-sm:10px;
+  --shadow:0 1px 3px rgba(15,23,42,.06), 0 1px 2px rgba(15,23,42,.04);
+  --shadow-md:0 4px 6px rgba(15,23,42,.05), 0 2px 4px rgba(15,23,42,.04);
+  --shadow-lg:0 10px 25px rgba(15,23,42,.07), 0 4px 10px rgba(15,23,42,.04);
+  --font:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+}
+
+html{scroll-behavior:smooth}
+body{
+  font-family:var(--font);
+  background:var(--bg);
+  color:var(--text);
+  -webkit-font-smoothing:antialiased;
+  line-height:1.6;
+}
+a{color:inherit;text-decoration:none}
+
+/* ── Minimal Header ── */
+.site-header{
+  position:sticky;top:0;z-index:100;
+  background:rgba(255,255,255,.85);
+  backdrop-filter:blur(12px);
+  -webkit-backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--border);
+}
+.header-inner{
+  max-width:1200px;margin:0 auto;
+  padding:0 24px;height:64px;
+  display:flex;align-items:center;justify-content:space-between;
+}
+.logo{font-size:22px;font-weight:800;color:var(--text);letter-spacing:-.5px}
+.logo span{color:var(--accent)}
+.header-nav{display:flex;align-items:center;gap:28px}
+.header-nav a{
+  font-size:14px;font-weight:500;color:var(--text-secondary);
+  transition:color .2s;
+}
+.header-nav a:hover{color:var(--text)}
+.header-nav a.active{color:var(--accent);font-weight:600}
+
+/* ── Hero ── */
+.hero{
+  text-align:center;
+  padding:72px 24px 0;
+  max-width:680px;
+  margin:0 auto;
+}
+.hero-badge{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:6px 16px;border-radius:100px;
+  background:var(--accent-light);
+  border:1px solid rgba(79,70,229,.1);
+  color:var(--accent);font-size:12px;font-weight:600;
+  letter-spacing:.5px;text-transform:uppercase;
+  margin-bottom:20px;
+}
+.hero-badge-dot{
+  width:6px;height:6px;border-radius:50%;background:var(--accent);
+  animation:pulse 2s ease-in-out infinite;
+}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.hero h1{
+  font-size:clamp(32px,5vw,48px);
+  font-weight:800;letter-spacing:-1.5px;
+  line-height:1.15;margin-bottom:16px;
+  color:var(--text);
+}
+.hero p{
+  font-size:17px;color:var(--text-secondary);
+  line-height:1.7;max-width:520px;margin:0 auto;
+}
+
+/* ── Filter Tabs ── */
+.filter-bar{
+  display:flex;justify-content:center;gap:8px;
+  padding:40px 24px 0;
+  flex-wrap:wrap;
+}
+.filter-btn{
+  padding:9px 20px;border-radius:100px;
+  font-size:13px;font-weight:600;font-family:var(--font);
+  border:1px solid var(--border);
+  background:var(--bg);color:var(--text-secondary);
+  cursor:pointer;transition:all .2s;
+  white-space:nowrap;
+}
+.filter-btn:hover{
+  border-color:var(--border-hover);
+  color:var(--text);
+}
+.filter-btn.active{
+  background:var(--accent);
+  border-color:var(--accent);
+  color:#fff;
+}
+
+/* ── Products Grid ── */
+.products-section{
+  max-width:1200px;margin:0 auto;
+  padding:40px 24px 80px;
+}
+.products-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill, minmax(340px, 1fr));
+  gap:24px;
+}
+.product-count{
+  text-align:center;font-size:13px;color:var(--text-muted);
+  margin-bottom:28px;font-weight:500;
+}
+
+/* ── Product Card ── */
+.product-card{
+  background:var(--bg);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  padding:32px;
+  display:flex;flex-direction:column;
+  transition:border-color .3s, box-shadow .3s, transform .3s;
+  position:relative;
+}
+.product-card:hover{
+  border-color:var(--border-hover);
+  box-shadow:var(--shadow-lg);
+  transform:translateY(-2px);
+}
+
+/* Card header */
+.card-header{
+  display:flex;align-items:flex-start;gap:16px;
+  margin-bottom:20px;
+}
+.card-icon{
+  width:56px;height:56px;border-radius:14px;
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;position:relative;
+}
+.card-icon svg{width:28px;height:28px}
+.card-icon img{
+  width:100%;height:100%;object-fit:cover;
+  border-radius:14px;
+}
+
+.card-meta{flex:1;min-width:0}
+.card-name{
+  font-size:18px;font-weight:700;color:var(--text);
+  line-height:1.3;margin-bottom:4px;
+  letter-spacing:-.2px;
+}
+.card-badges{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.version-badge{
+  font-size:11px;font-weight:600;
+  padding:2px 8px;border-radius:6px;
+  background:var(--bg-secondary);
+  border:1px solid var(--border);
+  color:var(--text-muted);
+}
+.new-badge{
+  font-size:10px;font-weight:700;
+  padding:2px 8px;border-radius:6px;
+  background:var(--green-light);
+  border:1px solid rgba(5,150,105,.15);
+  color:var(--green);
+  text-transform:uppercase;
+  letter-spacing:.5px;
+}
+
+/* Tagline */
+.card-tagline{
+  font-size:14px;color:var(--text-secondary);
+  line-height:1.7;margin-bottom:20px;
+  flex-grow:1;
+}
+
+/* Features */
+.card-features{
+  display:flex;flex-wrap:wrap;gap:6px;
+  margin-bottom:24px;
+}
+.feature-chip{
+  font-size:12px;font-weight:500;
+  padding:5px 12px;border-radius:8px;
+  background:var(--bg-secondary);
+  color:var(--text-secondary);
+  border:1px solid transparent;
+  transition:border-color .2s;
+}
+.product-card:hover .feature-chip{
+  border-color:var(--border);
+}
+
+/* Platforms */
+.card-platforms{
+  display:flex;gap:8px;margin-bottom:20px;
+}
+.platform-tag{
+  display:inline-flex;align-items:center;gap:5px;
+  font-size:11px;font-weight:500;color:var(--text-muted);
+  padding:4px 10px;border-radius:6px;
+  background:var(--bg-secondary);
+}
+.platform-tag svg{width:12px;height:12px;opacity:.5}
+
+/* CTA row */
+.card-actions{
+  display:flex;gap:10px;align-items:center;flex-wrap:wrap;
+  margin-top:auto;
+}
+.btn{
+  display:inline-flex;align-items:center;gap:8px;
+  padding:11px 22px;border-radius:var(--radius-sm);
+  font-size:14px;font-weight:600;font-family:var(--font);
+  border:none;cursor:pointer;
+  transition:all .2s;
+  text-decoration:none;
+  white-space:nowrap;
+}
+.btn svg{width:16px;height:16px}
+.btn-primary{
+  background:var(--accent);color:#fff;
+  box-shadow:0 1px 2px rgba(79,70,229,.3);
+}
+.btn-primary:hover{
+  background:var(--accent-dark);
+  box-shadow:0 4px 12px rgba(79,70,229,.3);
+  transform:translateY(-1px);
+}
+.btn-chrome{background:#1a73e8;box-shadow:0 1px 2px rgba(26,115,232,.3)}
+.btn-chrome:hover{background:#1557b0;box-shadow:0 4px 12px rgba(26,115,232,.3);transform:translateY(-1px)}
+.btn-secondary{
+  background:var(--bg);color:var(--text-secondary);
+  border:1px solid var(--border);
+  padding:10px 18px;
+}
+.btn-secondary:hover{
+  border-color:var(--border-hover);
+  color:var(--text);
+  background:var(--bg-secondary);
+}
+
+/* ── Empty State ── */
+.empty-state{
+  text-align:center;padding:60px 24px;
+  color:var(--text-muted);font-size:15px;
+}
+
+/* ── Footer ── */
+.site-footer{
+  background:#0f172a;color:#94a3b8;
+  padding:64px 24px 32px;
+}
+.footer-inner{
+  max-width:1200px;margin:0 auto;
+  display:grid;
+  grid-template-columns:2fr 1fr 1fr 1fr;
+  gap:48px;
+}
+.footer-brand{max-width:280px}
+.footer-brand .logo{color:#f8fafc;margin-bottom:12px;display:block}
+.footer-brand p{font-size:13px;line-height:1.8;color:#64748b}
+.footer-col h4{
+  font-size:11px;font-weight:700;
+  text-transform:uppercase;letter-spacing:1px;
+  color:#64748b;margin-bottom:16px;
+}
+.footer-col a{
+  display:block;font-size:13px;color:#94a3b8;
+  padding:4px 0;transition:color .2s;
+}
+.footer-col a:hover{color:#e2e8f0}
+.footer-bottom{
+  max-width:1200px;margin:0 auto;
+  padding-top:32px;margin-top:48px;
+  border-top:1px solid #1e293b;
+  display:flex;justify-content:space-between;align-items:center;
+  font-size:12px;color:#475569;
+}
+
+/* ── Responsive ── */
+@media(max-width:900px){
+  .products-grid{grid-template-columns:repeat(auto-fill, minmax(300px, 1fr))}
+  .footer-inner{grid-template-columns:1fr 1fr;gap:32px}
+}
+@media(max-width:640px){
+  .hero{padding:48px 20px 0}
+  .hero h1{font-size:28px;letter-spacing:-1px}
+  .hero p{font-size:15px}
+  .products-section{padding:32px 16px 60px}
+  .products-grid{grid-template-columns:1fr}
+  .product-card{padding:24px}
+  .card-actions{flex-direction:column;width:100%}
+  .btn{width:100%;justify-content:center}
+  .header-nav{gap:16px}
+  .header-nav a{font-size:13px}
+  .footer-inner{grid-template-columns:1fr}
+  .footer-bottom{flex-direction:column;gap:8px;text-align:center}
+}
+
+/* ── Animations ── */
+.product-card{
+  opacity:0;transform:translateY(16px);
+  animation:cardIn .5s ease forwards;
+}
+.product-card:nth-child(1){animation-delay:.05s}
+.product-card:nth-child(2){animation-delay:.12s}
+.product-card:nth-child(3){animation-delay:.19s}
+.product-card:nth-child(4){animation-delay:.26s}
+.product-card:nth-child(5){animation-delay:.33s}
+.product-card:nth-child(6){animation-delay:.4s}
+@keyframes cardIn{to{opacity:1;transform:translateY(0)}}
+</style>
+</head>
+<body>
+
+<!-- ═══ HEADER ═══ -->
+<header class="site-header">
+  <div class="header-inner">
+    <a href="https://www.tulz.org" class="logo">Tulz<span>.</span></a>
+    <nav class="header-nav">
+      <a href="https://www.tulz.org">Tools</a>
+      <a href="https://www.tulz.org/developers">APIs</a>
+      <a href="https://www.tulz.org/products" class="active">Products</a>
+      <a href="https://www.tulz.org/feedback">Feedback</a>
+    </nav>
+  </div>
+</header>
+
+<!-- ═══ HERO ═══ -->
+<section class="hero">
+  <div class="hero-badge"><span class="hero-badge-dot"></span> Products</div>
+  <h1>Apps &amp; Extensions</h1>
+  <p>Free browser extensions and desktop apps — built to boost your productivity without getting in the way.</p>
+</section>
+
+<!-- ═══ FILTERS ═══ -->
+<div class="filter-bar">
+  <button class="filter-btn active" data-filter="all">All</button>
+  <button class="filter-btn" data-filter="extension">Chrome Extensions</button>
+  <button class="filter-btn" data-filter="app">Desktop Apps</button>
+</div>
+
+<!-- ═══ PRODUCTS ═══ -->
+<section class="products-section">
+  <p class="product-count" id="product-count"></p>
+  <div class="products-grid" id="products-grid"></div>
+</section>
+
+<!-- ═══ FOOTER ═══ -->
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div class="footer-brand">
+      <span class="logo">Tulz<span>.</span></span>
+      <p>Free online tools for everyone. All processing happens in your browser — your files never leave your device.</p>
+    </div>
+    <div class="footer-col">
+      <h4>Categories</h4>
+      <a href="https://www.tulz.org/tools/image">Image Tools</a>
+      <a href="https://www.tulz.org/tools/developer">Developer Tools</a>
+      <a href="https://www.tulz.org/tools/designer">Designer Tools</a>
+      <a href="https://www.tulz.org/tools/document">Document Tools</a>
+    </div>
+    <div class="footer-col">
+      <h4>Products</h4>
+      <a href="#app-sf-toolkit">SF Developer Toolkit</a>
+      <a href="#app-conga-debugger">Conga Debugger</a>
+      <a href="#app-hush">Hush</a>
+    </div>
+    <div class="footer-col">
+      <h4>About</h4>
+      <a href="https://www.tulz.org/developers">Developer APIs</a>
+      <a href="https://www.tulz.org/feedback">Feedback</a>
+
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <span>&copy; 2026 Tulz. All rights reserved.</span>
+    <span>Made with care for the web</span>
+  </div>
+</footer>
+
+<!-- ═══ PRODUCT DATA ═══ -->
+<script src="products-data.js"></script>
+
+<!-- ═══ ICONS (inline SVG templates) ═══ -->
+<script>
+const PRODUCT_ICONS = {
+  'sf-toolkit': 'icon-sf-toolkit.png',
+  'conga-debugger': 'icon-conga-debugger.png',
+  'hush': 'icon-hush.png',
+};
+
+const ICONS = {
+
+  'chrome': `<svg viewBox="0 0 16 16" fill="currentColor"><circle cx="8" cy="8" r="3" opacity=".6"/><path d="M8 1a7 7 0 0 0-6.06 3.5L5 8l.27-.47A3.5 3.5 0 0 1 8 5.5h6.5A7 7 0 0 0 8 1Z" opacity=".5"/><path d="M1.94 4.5A7 7 0 0 0 5 14.56L8 8 5 4.5H1.94Z" opacity=".4"/><path d="M5 14.56A7 7 0 0 0 14.5 5.5H8l-3 9.06Z" opacity=".45"/></svg>`,
+
+  'macos': `<svg viewBox="0 0 16 16" fill="currentColor"><path d="M12.15 13.2c-.56.84-1.15 1.65-2.06 1.67-.9.02-1.19-.54-2.22-.54-1.03 0-1.35.52-2.2.55-.88.04-1.55-.9-2.12-1.71C2.36 11.47 1.48 8.4 2.67 6.33c.59-1.03 1.64-1.68 2.78-1.7.86-.01 1.68.59 2.22.59.53 0 1.52-.72 2.56-.62.44.02 1.66.18 2.45 1.34-.06.04-1.46.87-1.45 2.57.02 2.04 1.79 2.72 1.8 2.73-.02.05-.28.97-.93 1.91M10.04 3.1c.5-.56 1.31-.99 1.99-1.01.09.79-.23 1.59-.7 2.16-.47.58-1.23 1.02-1.99.96-.1-.78.28-1.59.7-2.1"/></svg>`,
+
+  'windows': `<svg viewBox="0 0 16 16" fill="currentColor"><path d="M2 8V4.84L8 4V8H2Zm0 .5H8v4l-6-.84V8.5ZM8.5 8V3.93L14 3.07V8H8.5Zm0 .5H14v4.93l-5.5.86V8.5Z"/></svg>`,
+
+  'github': `<svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 .2A8 8 0 0 0 5.47 15.79c.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.42 7.42 0 0 1 4 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8 8 0 0 0 8 .2Z"/></svg>`,
+
+  'download': `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v8.5M4.5 7.5 8 11l3.5-3.5M3 13h10"/></svg>`,
+
+  'external': `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8.67V12a1.33 1.33 0 0 1-1.33 1.33H4A1.33 1.33 0 0 1 2.67 12V5.33A1.33 1.33 0 0 1 4 4h3.33M10 2.67h3.33V6M6.67 9.33 13.33 2.67"/></svg>`,
+};
+
+const PLATFORM_LABELS = {
+  chrome: { label: 'Chrome', icon: 'chrome' },
+  macos:  { label: 'macOS',  icon: 'macos' },
+  windows:{ label: 'Windows',icon: 'windows' },
+};
+</script>
+
+<!-- ═══ RENDER LOGIC ═══ -->
+<script>
+(function() {
+  const grid = document.getElementById('products-grid');
+  const countEl = document.getElementById('product-count');
+  const filterBtns = document.querySelectorAll('.filter-btn');
+  let activeFilter = 'all';
+
+  // Detect user OS for download buttons
+  const isMac = /Mac|iPhone|iPad|iPod/i.test(navigator.userAgent || '');
+
+  function icon(name) { return ICONS[name] || ''; }
+
+  function renderCard(p) {
+    const isExtension = p.category === 'extension';
+
+    // Build platform badges
+    const platforms = p.platforms.map(pl => {
+      const info = PLATFORM_LABELS[pl];
+      return `<span class="platform-tag">${icon(info.icon)} ${info.label}</span>`;
+    }).join('');
+
+    // Build feature chips (show max 4)
+    const features = p.features.slice(0, 4).map(f =>
+      `<span class="feature-chip">${f}</span>`
+    ).join('');
+
+    // Build badges
+    let badges = `<span class="version-badge">v${p.version}</span>`;
+    if (p.badge === 'new') {
+      badges += `<span class="new-badge">New</span>`;
+    }
+
+    // Build CTA buttons
+    let cta = '';
+    if (isExtension) {
+      cta = `
+        <a href="${p.links.chrome}" target="_blank" rel="noopener" class="btn btn-primary btn-chrome">
+          ${icon('chrome')} Add to Chrome
+        </a>`;
+    } else {
+      // Desktop app — OS-aware download
+      const dl = p.links.download || {};
+      const primaryUrl = isMac ? (dl.macos || '#') : (dl.windows || '#');
+      const primaryLabel = isMac ? 'Download for Mac' : 'Download for Windows';
+      cta = `
+        <a href="${primaryUrl}" class="btn btn-primary">
+          ${icon('download')} ${primaryLabel}
+        </a>`;
+    }
+
+
+
+    return `
+      <div class="product-card" id="app-${p.id}" data-category="${p.category}">
+        <div class="card-header">
+          <div class="card-icon"><img src="${PRODUCT_ICONS[p.id]}" alt="${p.shortName} icon"></div>
+          <div class="card-meta">
+            <div class="card-name">${p.shortName || p.name}</div>
+            <div class="card-badges">${badges}</div>
+          </div>
+        </div>
+        <p class="card-tagline">${p.tagline}</p>
+        <div class="card-features">${features}</div>
+        <div class="card-platforms">${platforms}</div>
+        <div class="card-actions">${cta}</div>
+      </div>`;
+  }
+
+  function render(filter) {
+    const filtered = filter === 'all'
+      ? PRODUCTS
+      : PRODUCTS.filter(p => p.category === filter);
+
+    grid.innerHTML = filtered.map(renderCard).join('');
+
+    const label = filter === 'all' ? 'products'
+      : filter === 'extension' ? 'Chrome extensions'
+      : 'desktop apps';
+    countEl.textContent = `Showing ${filtered.length} ${label}`;
+  }
+
+  // Filter button clicks
+  filterBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      filterBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      activeFilter = btn.dataset.filter;
+      render(activeFilter);
+    });
+  });
+
+  // Initial render
+  render('all');
+})();
+</script>
+
+</body>
+</html>
