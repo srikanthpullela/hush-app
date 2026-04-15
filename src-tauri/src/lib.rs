@@ -87,7 +87,7 @@ fn toggle_hush(app: &AppHandle, force_state: Option<bool>) {
     if force_state.is_none() {
         MANUAL_OVERRIDE.store(true, Ordering::Relaxed);
         AUTO_HUSHED_BY_MEETING.store(false, Ordering::Relaxed);
-        eprintln!("[Hush] Manual toggle — auto-hush paused until next screen share");
+        eprintln!("[Hush] Manual toggle — auto-hush paused until next meeting");
     }
 
     // Show loading spinner on tray while shortcut runs
@@ -184,7 +184,7 @@ fn start_meeting_poll(app: AppHandle) {
                 // screen share session will auto-hush again
                 if MANUAL_OVERRIDE.load(Ordering::Relaxed) && consecutive_no_meeting >= DEBOUNCE_COUNT {
                     MANUAL_OVERRIDE.store(false, Ordering::Relaxed);
-                    eprintln!("[Hush] Manual override cleared — ready for next screen share");
+                    eprintln!("[Hush] Manual override cleared — ready for next meeting");
                 }
             }
 
@@ -195,13 +195,13 @@ fn start_meeting_poll(app: AppHandle) {
 
             // Auto-hush ON: screen sharing detected for 15s straight
             if in_meeting && !hushed && consecutive_meeting >= DEBOUNCE_COUNT {
-                eprintln!("[Hush] AUTO-HUSH ON — screen sharing for {}s", consecutive_meeting * 3);
+                eprintln!("[Hush] AUTO-HUSH ON — meeting detected for {}s", consecutive_meeting * 3);
                 AUTO_HUSHED_BY_MEETING.store(true, Ordering::Relaxed);
                 toggle_hush(&app, Some(true));
             }
             // Auto-hush OFF: screen sharing stopped for 15s AND we were the ones who turned it on
             else if !in_meeting && hushed && auto_hushed && consecutive_no_meeting >= DEBOUNCE_COUNT {
-                eprintln!("[Hush] AUTO-HUSH OFF — screen sharing stopped for {}s", consecutive_no_meeting * 3);
+                eprintln!("[Hush] AUTO-HUSH OFF — meeting ended for {}s", consecutive_no_meeting * 3);
                 AUTO_HUSHED_BY_MEETING.store(false, Ordering::Relaxed);
                 toggle_hush(&app, Some(false));
             }
@@ -239,7 +239,7 @@ fn setup_complete(app: AppHandle) {
     if let Some(win) = app.get_webview_window("setup") {
         let _ = win.hide();
     }
-    eprintln!("[Hush] Setup complete — starting screen share detection");
+    eprintln!("[Hush] Setup complete — starting meeting detection");
     start_meeting_poll(app);
 }
 
@@ -289,7 +289,7 @@ pub fn run() {
                 // Window is auto-created from config but hidden; show it
                 show_setup_window(app.handle());
             } else {
-                eprintln!("[Hush] Shortcuts found — starting screen share detection");
+                eprintln!("[Hush] Shortcuts found — starting meeting detection");
                 // Hide setup window since shortcuts exist
                 if let Some(win) = app.get_webview_window("setup") {
                     let _ = win.hide();
@@ -328,7 +328,7 @@ fn show_menu(app: &AppHandle) {
     let auto_screen_share = CheckMenuItem::with_id(
         app,
         "auto_screen_share",
-        "Auto-DND on Screen Share",
+        "Auto-DND on Calls",
         true,
         AUTO_DND_SCREEN_SHARE.load(Ordering::Relaxed),
         None::<&str>,
@@ -362,7 +362,7 @@ fn show_menu(app: &AppHandle) {
         "auto_screen_share" => {
             let current = AUTO_DND_SCREEN_SHARE.load(Ordering::Relaxed);
             AUTO_DND_SCREEN_SHARE.store(!current, Ordering::Relaxed);
-            eprintln!("[Hush] Auto-DND on Screen Share: {}", !current);
+            eprintln!("[Hush] Auto-DND on Calls: {}", !current);
         }
         "play_sound" => {
             let current = PLAY_SOUND.load(Ordering::Relaxed);
