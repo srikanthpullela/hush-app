@@ -1,29 +1,25 @@
 use std::process::Command;
 
-/// Detect if user is currently in a meeting.
-/// Triggers ONLY when:
-///   1. A known meeting app is running AND screen sharing is active, OR
-///   2. A known meeting app is running AND mic/camera is actively in use
+/// Detect if user is actively sharing their screen in a meeting.
 ///
-/// A meeting app MUST be running for any auto-detection to trigger.
-/// Manual toggle via tray icon always works regardless.
+/// This is the ONLY auto-detection signal. We intentionally do NOT check:
+///   - Mic/camera (unreliable — stale after sleep, false positives from
+///     Voice Memos, Siri, dictation, etc.)
+///   - UDP connections (meeting apps keep background connections for chat)
+///   - Meeting app running alone (Teams/Slack always run in background)
+///
+/// CptHost is the macOS screen sharing host process — it ONLY runs during
+/// an active screen share session in a meeting app. No false positives.
+///
+/// For calls without screen sharing, the user uses the manual tray toggle.
 pub fn is_in_meeting() -> bool {
-    let meeting_app = is_meeting_app_running();
-    if !meeting_app {
-        return false;
+    let screen_sharing = check_screen_sharing();
+
+    if screen_sharing {
+        eprintln!("[Hush] meeting detected: screen sharing active");
     }
 
-    let screen_sharing = check_screen_sharing();
-    let mic_camera = check_mic_camera();
-
-    let result = screen_sharing || mic_camera;
-
-    eprintln!(
-        "[Hush] meeting check: meeting_app={}, screen_sharing={}, mic_camera={} → {}",
-        meeting_app, screen_sharing, mic_camera, result
-    );
-
-    result
+    screen_sharing
 }
 
 /// Check if a known meeting app (Teams, Zoom, Webex, Slack, Google Meet via browser) is running.
@@ -106,22 +102,18 @@ if ($mic) { Write-Output '1' } else { Write-Output '0' }
 }
 
 /// Check for screen sharing processes.
+/// Only checks for CptHost — the macOS content sharing host process that
+/// meeting apps (Zoom, Teams, Webex) spawn during active screen shares.
+/// ScreenSharingAgent is excluded — it can run for macOS remote desktop
+/// sessions unrelated to meetings.
 fn check_screen_sharing() -> bool {
     #[cfg(target_os = "macos")]
     {
-        // Note: "screencaptureui" is excluded — it's the macOS screenshot tool (Cmd+Shift+4),
-        // not actual screen sharing. Including it would falsely trigger DND on screenshots.
-        for proc in &["CptHost", "ScreenSharingAgent"] {
-            if Command::new("/usr/bin/pgrep")
-                .args(["-f", proc])
-                .output()
-                .map(|o| o.status.success())
-                .unwrap_or(false)
-            {
-                return true;
-            }
-        }
-        return false;
+        return Command::new("/usr/bin/pgrep")
+            .args(["-f", "CptHost"])
+            .output()
+            .map(|o| o.status.success())
+            .unwrap_or(false);
     }
 
     #[cfg(target_os = "windows")]
