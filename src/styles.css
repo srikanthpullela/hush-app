@@ -234,6 +234,24 @@ h2 {
 }
 .btn-icon { font-size: 16px; }
 
+.btn-copy {
+  display: inline-block;
+  background: rgba(255,255,255,.1);
+  border: 1px solid rgba(255,255,255,.15);
+  border-radius: 4px;
+  color: rgba(255,255,255,.7);
+  font-size: 12px;
+  padding: 1px 6px;
+  margin-left: 6px;
+  cursor: pointer;
+  vertical-align: middle;
+  transition: all .15s;
+}
+.btn-copy:hover {
+  background: rgba(255,255,255,.2);
+  color: #fff;
+}
+
 .btn-primary {
   background: linear-gradient(135deg, #7c3aed, #6366f1);
   color: #fff;

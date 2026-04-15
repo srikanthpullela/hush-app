@@ -41,7 +41,8 @@ var found = false
 for w in list {
     let owner = w["kCGWindowOwnerName"] as? String ?? ""
     let layer = w["kCGWindowLayer"] as? Int ?? 0
-    if layer == 3 && meetingApps.contains(where: { owner.contains($0) }) {
+    let onscreen = w["kCGWindowIsOnscreen"] as? Bool ?? false
+    if layer == 3 && onscreen && meetingApps.contains(where: { owner.contains($0) }) {
         found = true
         break
     }

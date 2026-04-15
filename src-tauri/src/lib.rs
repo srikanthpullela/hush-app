@@ -11,10 +11,13 @@ use tauri::{
 
 static IS_HUSHED: AtomicBool = AtomicBool::new(false);
 static PLAY_SOUND: AtomicBool = AtomicBool::new(true);
+static AUTO_DND_SCREEN_SHARE: AtomicBool = AtomicBool::new(true);
 static AUTO_HUSHED_BY_MEETING: AtomicBool = AtomicBool::new(false);
 /// Set when user manually overrides DND during a meeting.
 /// Prevents auto re-enabling until screen sharing stops and starts again.
 static MANUAL_OVERRIDE: AtomicBool = AtomicBool::new(false);
+/// Prevents starting multiple poll loops.
+static POLL_STARTED: AtomicBool = AtomicBool::new(false);
 
 fn set_tray_icon(app: &AppHandle, icon_file: &str, tooltip: &str) {
     if let Some(tray) = app.tray_by_id("hush-tray") {
@@ -133,6 +136,11 @@ fn play_sound(hushed: bool) {
 }
 
 fn start_meeting_poll(app: AppHandle) {
+    // Prevent starting multiple poll loops
+    if POLL_STARTED.swap(true, Ordering::Relaxed) {
+        eprintln!("[Hush] Poll loop already running — skipping duplicate start");
+        return;
+    }
     std::thread::spawn(move || {
         // Debounce: require 2 consecutive matching polls (6s) before toggling.
         let mut consecutive_meeting = 0u32;
@@ -150,6 +158,13 @@ fn start_meeting_poll(app: AppHandle) {
             last_poll = std::time::Instant::now();
             if elapsed > 30 {
                 eprintln!("[Hush] System wake detected ({}s gap) — resetting", elapsed);
+                consecutive_meeting = 0;
+                consecutive_no_meeting = 0;
+                continue;
+            }
+
+            // Skip detection if user disabled auto-DND on screen share
+            if !AUTO_DND_SCREEN_SHARE.load(Ordering::Relaxed) {
                 consecutive_meeting = 0;
                 consecutive_no_meeting = 0;
                 continue;
@@ -308,6 +323,17 @@ fn show_menu(app: &AppHandle) {
     let toggle = MenuItem::with_id(app, "toggle", toggle_text, true, None::<&str>).unwrap();
     let sep1 = PredefinedMenuItem::separator(app).unwrap();
     let sep2 = PredefinedMenuItem::separator(app).unwrap();
+    let sep3 = PredefinedMenuItem::separator(app).unwrap();
+
+    let auto_screen_share = CheckMenuItem::with_id(
+        app,
+        "auto_screen_share",
+        "Auto-DND on Screen Share",
+        true,
+        AUTO_DND_SCREEN_SHARE.load(Ordering::Relaxed),
+        None::<&str>,
+    )
+    .unwrap();
 
     let sound = CheckMenuItem::with_id(
         app,
@@ -323,7 +349,7 @@ fn show_menu(app: &AppHandle) {
 
     let menu = Menu::with_items(
         app,
-        &[&status, &sep1, &toggle, &sep2, &sound, &sep2, &quit],
+        &[&status, &sep1, &toggle, &sep2, &auto_screen_share, &sound, &sep3, &quit],
     )
     .unwrap();
 
@@ -333,6 +359,11 @@ fn show_menu(app: &AppHandle) {
 
     app.on_menu_event(move |app_h, event: MenuEvent| match event.id().as_ref() {
         "toggle" => toggle_hush(app_h, None),
+        "auto_screen_share" => {
+            let current = AUTO_DND_SCREEN_SHARE.load(Ordering::Relaxed);
+            AUTO_DND_SCREEN_SHARE.store(!current, Ordering::Relaxed);
+            eprintln!("[Hush] Auto-DND on Screen Share: {}", !current);
+        }
         "play_sound" => {
             let current = PLAY_SOUND.load(Ordering::Relaxed);
             PLAY_SOUND.store(!current, Ordering::Relaxed);

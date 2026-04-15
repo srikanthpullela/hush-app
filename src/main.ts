@@ -101,6 +101,20 @@ openBtn.addEventListener("click", async () => {
   await invoke("open_shortcuts_app");
 });
 
+// Copy buttons for shortcut names
+document.querySelectorAll(".btn-copy").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const text = (btn as HTMLElement).dataset.copy;
+    if (text) {
+      navigator.clipboard.writeText(text).then(() => {
+        const original = btn.textContent;
+        btn.textContent = "✓";
+        setTimeout(() => { btn.textContent = original; }, 1500);
+      });
+    }
+  });
+});
+
 doneBtn.addEventListener("click", async () => {
   manualSetup.style.display = "none";
   allDone.style.display = "block";
