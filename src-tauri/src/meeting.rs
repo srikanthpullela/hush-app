@@ -41,6 +41,10 @@ fn compile_detector() -> Option<PathBuf> {
     let bin = dir.join("meeting-detect");
     let src = dir.join("meeting-detect.swift");
 
+    // Always recompile — ensures binary matches current script after updates.
+    // OnceLock guarantees this only runs once per app launch.
+    let _ = std::fs::remove_file(&bin);
+
     eprintln!("[Hush] Compiling meeting detector...");
     if std::fs::write(&src, DETECT_SCRIPT).is_err() {
         eprintln!("[Hush] Failed to write detector source");
