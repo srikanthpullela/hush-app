@@ -1,5 +1,4 @@
 mod dnd;
-mod meeting;
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::{
@@ -10,9 +9,7 @@ use tauri::{
 };
 
 static IS_HUSHED: AtomicBool = AtomicBool::new(false);
-static AUTO_HUSH_ENABLED: AtomicBool = AtomicBool::new(true);
 static PLAY_SOUND: AtomicBool = AtomicBool::new(true);
-static AUTO_HUSHED_BY_MEETING: AtomicBool = AtomicBool::new(false);
 
 fn set_tray_icon(app: &AppHandle, icon_file: &str, tooltip: &str) {
     if let Some(tray) = app.tray_by_id("hush-tray") {
@@ -122,62 +119,6 @@ fn play_sound(hushed: bool) {
     }
 }
 
-fn start_meeting_poll(app: AppHandle) {
-    std::thread::spawn(move || {
-        // Debounce: require 3 consecutive matching polls before toggling.
-        let mut consecutive_meeting = 0u32;
-        let mut consecutive_no_meeting = 0u32;
-        const DEBOUNCE_COUNT: u32 = 3; // 3 polls × 5s = 15s before toggle
-
-        let mut last_poll = std::time::Instant::now();
-
-        loop {
-            std::thread::sleep(std::time::Duration::from_secs(5));
-
-            if !AUTO_HUSH_ENABLED.load(Ordering::Relaxed) {
-                consecutive_meeting = 0;
-                consecutive_no_meeting = 0;
-                last_poll = std::time::Instant::now();
-                continue;
-            }
-
-            // Detect sleep/wake: if >15s passed since last poll, the system
-            // was likely asleep. Reset counters and skip this cycle — system
-            // state is unreliable right after wake.
-            let elapsed = last_poll.elapsed().as_secs();
-            last_poll = std::time::Instant::now();
-            if elapsed > 15 {
-                eprintln!("[Hush] System wake detected ({}s gap) — skipping cycle", elapsed);
-                consecutive_meeting = 0;
-                consecutive_no_meeting = 0;
-                continue;
-            }
-
-            let in_meeting = meeting::is_in_meeting();
-            let hushed = IS_HUSHED.load(Ordering::Relaxed);
-            let auto_hushed = AUTO_HUSHED_BY_MEETING.load(Ordering::Relaxed);
-
-            if in_meeting {
-                consecutive_meeting += 1;
-                consecutive_no_meeting = 0;
-            } else {
-                consecutive_no_meeting += 1;
-                consecutive_meeting = 0;
-            }
-
-            if in_meeting && !hushed && consecutive_meeting >= DEBOUNCE_COUNT {
-                eprintln!("[Hush] AUTO-HUSH ON — meeting detected for {}s", consecutive_meeting * 5);
-                AUTO_HUSHED_BY_MEETING.store(true, Ordering::Relaxed);
-                toggle_hush(&app, Some(true));
-            } else if !in_meeting && hushed && auto_hushed && consecutive_no_meeting >= DEBOUNCE_COUNT {
-                eprintln!("[Hush] AUTO-HUSH OFF — no meeting for {}s", consecutive_no_meeting * 5);
-                AUTO_HUSHED_BY_MEETING.store(false, Ordering::Relaxed);
-                toggle_hush(&app, Some(false));
-            }
-        }
-    });
-}
-
 // MARK: - Tauri Commands for Setup UI
 
 #[derive(serde::Serialize)]
@@ -204,13 +145,11 @@ fn open_shortcuts_app() {
 
 #[tauri::command]
 fn setup_complete(app: AppHandle) {
-    // Hide setup window (keep it around for potential re-show)
+    // Hide setup window — shortcuts are now configured
     if let Some(win) = app.get_webview_window("setup") {
         let _ = win.hide();
     }
-
-    // Start meeting detection now that shortcuts are ready
-    start_meeting_poll(app);
+    eprintln!("[Hush] Setup complete — ready for manual toggle");
 }
 
 fn needs_setup() -> bool {
@@ -259,13 +198,11 @@ pub fn run() {
                 // Window is auto-created from config but hidden; show it
                 show_setup_window(app.handle());
             } else {
-                eprintln!("[Hush] Shortcuts found — tray-only mode");
+                eprintln!("[Hush] Shortcuts found — ready for manual toggle");
                 // Hide setup window since shortcuts exist
                 if let Some(win) = app.get_webview_window("setup") {
                     let _ = win.hide();
                 }
-                // Shortcuts already exist — start meeting detection
-                start_meeting_poll(app.handle().clone());
             }
 
             Ok(())
@@ -295,16 +232,6 @@ fn show_menu(app: &AppHandle) {
     let sep1 = PredefinedMenuItem::separator(app).unwrap();
     let sep2 = PredefinedMenuItem::separator(app).unwrap();
 
-    let auto_hush = CheckMenuItem::with_id(
-        app,
-        "auto_hush",
-        "Auto-Hush on Meetings",
-        true,
-        AUTO_HUSH_ENABLED.load(Ordering::Relaxed),
-        None::<&str>,
-    )
-    .unwrap();
-
     let sound = CheckMenuItem::with_id(
         app,
         "play_sound",
@@ -319,7 +246,7 @@ fn show_menu(app: &AppHandle) {
 
     let menu = Menu::with_items(
         app,
-        &[&status, &sep1, &toggle, &sep2, &auto_hush, &sound, &sep2, &quit],
+        &[&status, &sep1, &toggle, &sep2, &sound, &sep2, &quit],
     )
     .unwrap();
 
@@ -329,10 +256,6 @@ fn show_menu(app: &AppHandle) {
 
     app.on_menu_event(move |app_h, event: MenuEvent| match event.id().as_ref() {
         "toggle" => toggle_hush(app_h, None),
-        "auto_hush" => {
-            let current = AUTO_HUSH_ENABLED.load(Ordering::Relaxed);
-            AUTO_HUSH_ENABLED.store(!current, Ordering::Relaxed);
-        }
         "play_sound" => {
             let current = PLAY_SOUND.load(Ordering::Relaxed);
             PLAY_SOUND.store(!current, Ordering::Relaxed);
