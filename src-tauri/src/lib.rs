@@ -134,15 +134,15 @@ fn play_sound(hushed: bool) {
 
 fn start_meeting_poll(app: AppHandle) {
     std::thread::spawn(move || {
-        // Debounce: require 3 consecutive matching polls (15s) before toggling.
+        // Debounce: require 2 consecutive matching polls (6s) before toggling.
         let mut consecutive_meeting = 0u32;
         let mut consecutive_no_meeting = 0u32;
-        const DEBOUNCE_COUNT: u32 = 3;
+        const DEBOUNCE_COUNT: u32 = 2;
 
         let mut last_poll = std::time::Instant::now();
 
         loop {
-            std::thread::sleep(std::time::Duration::from_secs(5));
+            std::thread::sleep(std::time::Duration::from_secs(3));
 
             // Detect sleep/wake: if >30s passed, system was asleep.
             // Skip this cycle — state may be stale.
@@ -180,13 +180,13 @@ fn start_meeting_poll(app: AppHandle) {
 
             // Auto-hush ON: screen sharing detected for 15s straight
             if in_meeting && !hushed && consecutive_meeting >= DEBOUNCE_COUNT {
-                eprintln!("[Hush] AUTO-HUSH ON — screen sharing for {}s", consecutive_meeting * 5);
+                eprintln!("[Hush] AUTO-HUSH ON — screen sharing for {}s", consecutive_meeting * 3);
                 AUTO_HUSHED_BY_MEETING.store(true, Ordering::Relaxed);
                 toggle_hush(&app, Some(true));
             }
             // Auto-hush OFF: screen sharing stopped for 15s AND we were the ones who turned it on
             else if !in_meeting && hushed && auto_hushed && consecutive_no_meeting >= DEBOUNCE_COUNT {
-                eprintln!("[Hush] AUTO-HUSH OFF — screen sharing stopped for {}s", consecutive_no_meeting * 5);
+                eprintln!("[Hush] AUTO-HUSH OFF — screen sharing stopped for {}s", consecutive_no_meeting * 3);
                 AUTO_HUSHED_BY_MEETING.store(false, Ordering::Relaxed);
                 toggle_hush(&app, Some(false));
             }
