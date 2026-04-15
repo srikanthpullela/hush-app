@@ -1,10 +1,15 @@
 use std::process::Command;
-use std::sync::OnceLock;
+use std::sync::{Mutex, OnceLock};
 
 // ── macOS version detection ─────────────────────────────
 
 /// Cached macOS major version (e.g. 12 for Monterey, 14 for Sonoma).
 static MACOS_MAJOR: OnceLock<u32> = OnceLock::new();
+
+/// Cached actual shortcut names (resolved case-insensitively).
+/// Wrapped in Mutex so they can be updated when user creates shortcuts during setup.
+static SHORTCUT_ON_NAME: Mutex<Option<String>> = Mutex::new(None);
+static SHORTCUT_OFF_NAME: Mutex<Option<String>> = Mutex::new(None);
 
 fn macos_major_version() -> u32 {
     *MACOS_MAJOR.get_or_init(|| {
@@ -26,23 +31,56 @@ fn is_legacy_dnd() -> bool {
 
 // ── Shortcut checks (macOS 12+ only) ───────────────────
 
+/// Get the list of all shortcuts installed on this Mac.
+fn get_shortcut_list() -> Vec<String> {
+    Command::new("/usr/bin/shortcuts")
+        .arg("list")
+        .output()
+        .ok()
+        .and_then(|o| String::from_utf8(o.stdout).ok())
+        .unwrap_or_default()
+        .lines()
+        .map(|l| l.to_string())
+        .collect()
+}
+
+/// Find the actual shortcut name matching the target (case-insensitive).
+/// Returns the exact name as it appears in Shortcuts.app, or None.
+fn find_shortcut_name(target: &str) -> Option<String> {
+    get_shortcut_list()
+        .into_iter()
+        .find(|l| l.eq_ignore_ascii_case(target))
+}
+
+/// Resolve and cache the actual shortcut names.
+fn resolve_shortcut_names() -> (bool, bool) {
+    let on = find_shortcut_name("Hush On");
+    let off = find_shortcut_name("Hush Off");
+    let has_on = on.is_some();
+    let has_off = off.is_some();
+
+    if let Some(name) = &on {
+        eprintln!("[Hush] Found 'Hush On' shortcut as: \"{}\"", name);
+    }
+    if let Some(name) = &off {
+        eprintln!("[Hush] Found 'Hush Off' shortcut as: \"{}\"", name);
+    }
+
+    *SHORTCUT_ON_NAME.lock().unwrap() = on;
+    *SHORTCUT_OFF_NAME.lock().unwrap() = off;
+
+    (has_on, has_off)
+}
+
 /// Check which shortcuts exist. Returns (has_hush_on, has_hush_off).
 /// On legacy macOS (<12), shortcuts aren't needed — returns (true, true).
+/// Always does a fresh lookup and updates the cached names.
 pub fn check_shortcuts() -> (bool, bool) {
     if is_legacy_dnd() {
         return (true, true);
     }
 
-    let list = Command::new("/usr/bin/shortcuts")
-        .arg("list")
-        .output()
-        .ok()
-        .and_then(|o| String::from_utf8(o.stdout).ok())
-        .unwrap_or_default();
-
-    let has_on = list.lines().any(|l| l.eq_ignore_ascii_case("Hush On"));
-    let has_off = list.lines().any(|l| l.eq_ignore_ascii_case("Hush Off"));
-    (has_on, has_off)
+    resolve_shortcut_names()
 }
 
 /// Try to auto-create shortcuts.
@@ -99,10 +137,38 @@ pub fn set_dnd(on: bool) -> bool {
 }
 
 /// macOS 12+: run the named Shortcut.
+/// Uses the cached actual shortcut name (resolved case-insensitively) so that
+/// "hush on", "Hush On", "HUSH ON" all work.
 fn set_dnd_shortcuts(on: bool) -> bool {
-    let name = if on { "Hush On" } else { "Hush Off" };
+    let cached_name = if on {
+        SHORTCUT_ON_NAME.lock().unwrap().clone()
+    } else {
+        SHORTCUT_OFF_NAME.lock().unwrap().clone()
+    };
+
+    let name = match cached_name {
+        Some(n) => n,
+        None => {
+            // Cache miss — try to resolve now
+            resolve_shortcut_names();
+            let retry = if on {
+                SHORTCUT_ON_NAME.lock().unwrap().clone()
+            } else {
+                SHORTCUT_OFF_NAME.lock().unwrap().clone()
+            };
+            match retry {
+                Some(n) => n,
+                None => {
+                    eprintln!("[Hush] Shortcut not found for {}", if on { "Hush On" } else { "Hush Off" });
+                    return false;
+                }
+            }
+        }
+    };
+
+    eprintln!("[Hush] Running shortcut: \"{}\"", name);
     Command::new("/usr/bin/shortcuts")
-        .args(["run", name])
+        .args(["run", &name])
         .output()
         .map(|o| o.status.success())
         .unwrap_or(false)
