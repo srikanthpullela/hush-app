@@ -271,6 +271,28 @@ a{color:inherit;text-decoration:none}
   background:var(--bg-secondary);
 }
 
+.install-note{
+  font-size:12px;color:var(--text-muted);margin-top:14px;line-height:1.5;
+}
+.install-note .cmd-row{
+  display:inline-flex;align-items:center;gap:6px;margin-top:6px;
+  background:var(--bg-secondary);border:1px solid var(--border);
+  border-radius:8px;padding:4px 6px 4px 10px;
+}
+.install-note .cmd-row code{
+  font-size:11px;color:var(--accent);font-family:'SF Mono',Menlo,monospace;
+  white-space:nowrap;background:none;border:none;padding:0;
+}
+.copy-cmd{
+  display:inline-flex;align-items:center;justify-content:center;
+  background:transparent;border:1px solid var(--border);color:var(--text-secondary);
+  width:26px;height:26px;border-radius:6px;cursor:pointer;
+  transition:all .2s;padding:0;flex-shrink:0;
+}
+.copy-cmd:hover{border-color:var(--border-hover);background:var(--border);color:var(--text)}
+.copy-cmd.copied{border-color:rgba(5,150,105,.3);background:var(--green-light);color:var(--green)}
+.copy-cmd svg{width:14px;height:14px}
+
 /* ── Empty State ── */
 .empty-state{
   text-align:center;padding:60px 24px;
@@ -424,7 +446,7 @@ const PRODUCT_ICONS = {
 
 const ICONS = {
 
-  'chrome': `<svg viewBox="0 0 16 16" fill="currentColor"><circle cx="8" cy="8" r="3" opacity=".6"/><path d="M8 1a7 7 0 0 0-6.06 3.5L5 8l.27-.47A3.5 3.5 0 0 1 8 5.5h6.5A7 7 0 0 0 8 1Z" opacity=".5"/><path d="M1.94 4.5A7 7 0 0 0 5 14.56L8 8 5 4.5H1.94Z" opacity=".4"/><path d="M5 14.56A7 7 0 0 0 14.5 5.5H8l-3 9.06Z" opacity=".45"/></svg>`,
+  'chrome': `<svg viewBox="0 0 48 48" width="16" height="16"><path fill="#4caf50" d="M44 24c0 11.04-8.96 20-20 20S4 35.04 4 24 12.96 4 24 4s20 8.96 20 20"/><path fill="#f44336" d="M24 4v8c4.42 0 8 3.58 8 8h12c0-11.04-8.96-20-20-20"/><path fill="#ffc107" d="M44 24H32c0 4.42-3.58 8-8 8l-6.93 12C19 44.64 21.46 44.96 24 44c11.04 0 20-8.96 20-20"/><path fill="#1565c0" d="M17.07 44 24 32c-4.42 0-8-3.58-8-8H4c0 11.04 8.96 20 20 20-2.54.04-4.99-.36-6.93-1"/><circle fill="#fff" cx="24" cy="24" r="7"/><circle fill="#1565c0" cx="24" cy="24" r="4"/></svg>`,
 
   'macos': `<svg viewBox="0 0 16 16" fill="currentColor"><path d="M12.15 13.2c-.56.84-1.15 1.65-2.06 1.67-.9.02-1.19-.54-2.22-.54-1.03 0-1.35.52-2.2.55-.88.04-1.55-.9-2.12-1.71C2.36 11.47 1.48 8.4 2.67 6.33c.59-1.03 1.64-1.68 2.78-1.7.86-.01 1.68.59 2.22.59.53 0 1.52-.72 2.56-.62.44.02 1.66.18 2.45 1.34-.06.04-1.46.87-1.45 2.57.02 2.04 1.79 2.72 1.8 2.73-.02.05-.28.97-.93 1.91M10.04 3.1c.5-.56 1.31-.99 1.99-1.01.09.79-.23 1.59-.7 2.16-.47.58-1.23 1.02-1.99.96-.1-.78.28-1.59.7-2.1"/></svg>`,
 
@@ -472,7 +494,7 @@ const PLATFORM_LABELS = {
     ).join('');
 
     // Build badges
-    let badges = `<span class="version-badge">v${p.version}</span>`;
+    let badges = '';
     if (p.badge === 'new') {
       badges += `<span class="new-badge">New</span>`;
     }
@@ -489,10 +511,19 @@ const PLATFORM_LABELS = {
       const dl = p.links.download || {};
       const primaryUrl = isMac ? (dl.macos || '#') : (dl.windows || '#');
       const primaryLabel = isMac ? 'Download for Mac' : 'Download for Windows';
+      const altUrl = isMac ? (dl.windows || '#') : (dl.macos || '#');
+      const altLabel = isMac ? 'Windows' : 'macOS';
+      const altIcon = isMac ? 'windows' : 'macos';
       cta = `
         <a href="${primaryUrl}" class="btn btn-primary">
-          ${icon('download')} ${primaryLabel}
-        </a>`;
+          ${icon(isMac ? 'macos' : 'windows')} ${primaryLabel}
+        </a>
+        <a href="${altUrl}" class="btn btn-secondary">
+          ${icon(altIcon)} ${altLabel}
+        </a>
+        <div class="install-note">macOS: If you see a &ldquo;damaged&rdquo; warning, run:<br>
+          <span class="cmd-row"><code>sudo xattr -cr /Applications/Hush.app</code><button class="copy-cmd" title="Copy command" onclick="navigator.clipboard.writeText('sudo xattr -cr /Applications/Hush.app').then(()=>{this.innerHTML='<svg viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;2&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot;><polyline points=&quot;20 6 9 17 4 12&quot;/></svg>';this.classList.add('copied');setTimeout(()=>{this.innerHTML='<svg viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;2&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot;><rect x=&quot;9&quot; y=&quot;9&quot; width=&quot;13&quot; height=&quot;13&quot; rx=&quot;2&quot;/><path d=&quot;M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1&quot;/></svg>';this.classList.remove('copied')},2000)})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button></span>
+        </div>`;
     }
 
 

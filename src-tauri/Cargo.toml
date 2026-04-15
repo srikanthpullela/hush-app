@@ -2,7 +2,7 @@
 name = "hush-app"
 version = "1.0.0"
 description = "Hush — One-click notification silencer"
-authors = ["spullela"]
+authors = ["Srikanth Pullela"]
 edition = "2021"
 
 [lib]

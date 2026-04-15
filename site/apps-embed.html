@@ -196,6 +196,28 @@ html,body{
 }
 .dl-secondary:hover{background:rgba(255,255,255,.06);color:#a1a1aa;border-color:rgba(255,255,255,.1)}
 
+.install-note{
+  font-size:12px;color:#52525b;margin-top:16px;line-height:1.5;
+}
+.install-note .cmd-row{
+  display:inline-flex;align-items:center;gap:6px;margin-top:6px;
+  background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);
+  border-radius:8px;padding:4px 6px 4px 10px;
+}
+.install-note .cmd-row code{
+  font-size:11px;color:#a78bfa;font-family:'SF Mono',Menlo,monospace;
+  white-space:nowrap;background:none;border:none;padding:0;
+}
+.copy-cmd{
+  display:inline-flex;align-items:center;justify-content:center;
+  background:transparent;border:1px solid rgba(255,255,255,.1);color:#a78bfa;
+  width:26px;height:26px;border-radius:6px;cursor:pointer;
+  transition:all .2s;padding:0;flex-shrink:0;
+}
+.copy-cmd:hover{border-color:rgba(167,139,250,.3);background:rgba(167,139,250,.12)}
+.copy-cmd.copied{border-color:rgba(52,211,153,.3);background:rgba(52,211,153,.08)}
+.copy-cmd svg{width:14px;height:14px}
+
 .os-icon{width:18px;height:18px;display:inline-block}
 
 /* Footer */
@@ -258,7 +280,6 @@ html,body{
 
     <div class="app-right">
       <h2 class="app-name">Hush</h2>
-      <span class="app-ver">v1.0.0</span>
       <p class="app-desc">One-click Do Not Disturb for your desktop. Sits in your menu bar and auto-silences notifications when you join a meeting.</p>
 
       <div class="feats">
@@ -273,14 +294,18 @@ html,body{
           <span id="dl-hush-text">Download</span>
         </a>
         <a id="dl-hush-alt" class="dl-btn dl-secondary" href="#">
+          <span id="dl-hush-alt-icon"></span>
           <span id="dl-hush-alt-text"></span>
         </a>
+      </div>
+      <div class="install-note">macOS: If you see &ldquo;damaged&rdquo; warning, open Terminal and run:<br>
+        <span class="cmd-row"><code>sudo xattr -cr /Applications/Hush.app</code><button class="copy-cmd" id="copy-xattr" title="Copy command"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button></span>
       </div>
     </div>
   </div>
 
   <div class="footer">
-    <p>More apps coming soon &middot; <a href="https://splec.in">splec.in</a></p>
+    <p>More apps coming soon &middot; <a href="https://tulz.org">tulz.org</a></p>
   </div>
 
 </section>
@@ -288,8 +313,8 @@ html,body{
 <script>
 (function(){
   var c={
-    mac:{url:'https://github.com/splecdevelopers/hush-app/releases/latest/download/Hush_1.0.0_aarch64.dmg',label:'Download for Mac',alt:'Windows (.exe)',size:'3.1 MB'},
-    win:{url:'https://github.com/splecdevelopers/hush-app/releases/latest/download/Hush_1.0.0_x64-setup.exe',label:'Download for Windows',alt:'macOS (.dmg)',size:'~8 MB'}
+    mac:{url:'https://github.com/srikanthpullela/hush-app/releases/latest/download/Hush_1.0.0_aarch64.dmg',label:'Download for Mac',alt:'Windows (.exe)',size:'3 MB'},
+    win:{url:'https://github.com/srikanthpullela/hush-app/releases/latest/download/Hush_1.0.0_x64-setup.exe',label:'Download for Windows',alt:'macOS (.dmg)',size:'~8 MB'}
   };
   var isMac=/Mac|iPhone|iPad|iPod/i.test(navigator.userAgent||'');
   var p=isMac?c.mac:c.win, s=isMac?c.win:c.mac;
@@ -300,6 +325,16 @@ html,body{
   document.getElementById('dl-hush-icon').innerHTML=isMac?macI:winI;
   document.getElementById('dl-hush-alt').href=s.url;
   document.getElementById('dl-hush-alt-text').textContent=s.alt;
+  document.getElementById('dl-hush-alt-icon').innerHTML=isMac?winI:macI;
+
+  document.getElementById('copy-xattr').addEventListener('click',function(){
+    var b=this;
+    navigator.clipboard.writeText('sudo xattr -cr /Applications/Hush.app').then(function(){
+      b.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+      b.classList.add('copied');
+      setTimeout(function(){b.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';b.classList.remove('copied')},2000);
+    });
+  });
 })();
 </script>
 

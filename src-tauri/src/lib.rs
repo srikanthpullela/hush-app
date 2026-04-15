@@ -99,6 +99,7 @@ fn toggle_hush(app: &AppHandle, force_state: Option<bool>) {
         let success = dnd::set_dnd(new_state);
         if success {
             update_tray_icon(&app_handle, new_state);
+            build_and_set_menu(&app_handle);
             if PLAY_SOUND.load(Ordering::Relaxed) {
                 play_sound(new_state);
             }
@@ -106,6 +107,7 @@ fn toggle_hush(app: &AppHandle, force_state: Option<bool>) {
             // Revert on failure
             IS_HUSHED.store(!new_state, Ordering::Relaxed);
             update_tray_icon(&app_handle, !new_state);
+            build_and_set_menu(&app_handle);
         }
     });
 }
@@ -262,6 +264,12 @@ pub fn run() {
         .setup(|app| {
             // Set up tray icon click handler
             if let Some(tray) = app.tray_by_id("hush-tray") {
+                // Build and attach the menu so right-click shows it
+                build_and_set_menu(app.handle());
+
+                // Disable auto-showing menu on left click — we want left click to toggle DND
+                let _ = tray.set_show_menu_on_left_click(false);
+
                 tray.on_tray_icon_event(move |tray, event| {
                     match event {
                         TrayIconEvent::Click {
@@ -270,13 +278,6 @@ pub fn run() {
                             ..
                         } => {
                             toggle_hush(tray.app_handle(), None);
-                        }
-                        TrayIconEvent::Click {
-                            button: MouseButton::Right,
-                            button_state: MouseButtonState::Up,
-                            ..
-                        } => {
-                            show_menu(tray.app_handle());
                         }
                         _ => {}
                     }
@@ -305,7 +306,7 @@ pub fn run() {
     app.run(|_app_handle, _event| {});
 }
 
-fn show_menu(app: &AppHandle) {
+fn build_and_set_menu(app: &AppHandle) {
     let hushed = IS_HUSHED.load(Ordering::Relaxed);
 
     let status_text = if hushed {
