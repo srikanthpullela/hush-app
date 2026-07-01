@@ -521,7 +521,8 @@ const PLATFORM_LABELS = {
         <a href="${altUrl}" class="btn btn-secondary">
           ${icon(altIcon)} ${altLabel}
         </a>
-        <div class="install-note">macOS: If you see a &ldquo;damaged&rdquo; warning, run:<br>
+        <div class="install-note">macOS: After installing, go to <strong>System Settings → Privacy &amp; Security</strong> and click <strong>&ldquo;Open Anyway&rdquo;</strong> next to Hush.<br>
+          Or if you see a &ldquo;damaged&rdquo; error, run once in Terminal:<br>
           <span class="cmd-row"><code>sudo xattr -cr /Applications/Hush.app</code><button class="copy-cmd" title="Copy command" onclick="navigator.clipboard.writeText('sudo xattr -cr /Applications/Hush.app').then(()=>{this.innerHTML='<svg viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;2&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot;><polyline points=&quot;20 6 9 17 4 12&quot;/></svg>';this.classList.add('copied');setTimeout(()=>{this.innerHTML='<svg viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;2&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot;><rect x=&quot;9&quot; y=&quot;9&quot; width=&quot;13&quot; height=&quot;13&quot; rx=&quot;2&quot;/><path d=&quot;M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1&quot;/></svg>';this.classList.remove('copied')},2000)})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button></span>
         </div>`;
     }
