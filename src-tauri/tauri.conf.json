@@ -25,7 +25,7 @@
     "trayIcon": {
       "id": "hush-tray",
       "iconPath": "icons/tray-normal.png",
-      "iconAsTemplate": false,
+      "iconAsTemplate": true,
       "tooltip": "Hush — Notifications On"
     },
     "security": {

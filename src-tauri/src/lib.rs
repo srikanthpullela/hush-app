@@ -27,6 +27,10 @@ fn set_tray_icon(app: &AppHandle, icon_file: &str, tooltip: &str) {
                 .unwrap_or_default(),
         ) {
             let _ = tray.set_icon(Some(img));
+            // On macOS, mark as template image so the OS automatically renders
+            // it white on dark menu bars and black on light menu bars.
+            #[cfg(target_os = "macos")]
+            let _ = tray.set_icon_as_template(true);
         }
         let _ = tray.set_tooltip(Some(tooltip));
     }
