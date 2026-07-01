@@ -67,8 +67,8 @@ const PRODUCTS = [
     ],
     links: {
       download: {
-        macos: 'https://github.com/srikanthpullela/hush-app/releases/latest/download/Hush_1.0.4_aarch64.dmg',
-        windows: 'https://github.com/srikanthpullela/hush-app/releases/latest/download/Hush_1.0.4_x64-setup.exe',
+        macos: 'https://github.com/srikanthpullela/hush-app/releases/latest/download/Hush_1.0.5_aarch64.dmg',
+        windows: 'https://github.com/srikanthpullela/hush-app/releases/latest/download/Hush_1.0.5_x64-setup.exe',
       },
     },
   },
