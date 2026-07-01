@@ -55,13 +55,9 @@ jobs:
           KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
 
           echo -n "$APPLE_CERTIFICATE" | base64 --decode -o "$CERT_PATH"
-
-          # Create a dedicated temporary keychain
           security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
           security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
           security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-
-          # Import the certificate and allow codesign to use it without prompting
           security import "$CERT_PATH" \
             -P "$APPLE_CERTIFICATE_PASSWORD" \
             -A -t cert -f pkcs12 \
@@ -69,20 +65,14 @@ jobs:
           security set-key-partition-list \
             -S apple-tool:,apple: \
             -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-
-          # Add temp keychain to the search list
           security list-keychain -d user -s "$KEYCHAIN_PATH"
 
+      # ── Build + sign only (notarization is handled separately below) ──
       - name: Build Tauri app
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # ── Apple signing (macOS only — ignored on Windows) ──
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-          # ── Apple notarization ──
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         with:
           tagName: ${{ github.ref_name }}
           releaseName: "Hush ${{ github.ref_name }}"
@@ -90,16 +80,47 @@ jobs:
             Download Hush for your platform below.
 
             ### macOS Installation
-            1. Download the `.dmg` for your Mac  
+            1. Download the `.dmg` for your Mac
                (Apple Silicon → `aarch64`, Intel → `x64`)
             2. Open the `.dmg` and drag **Hush.app** to Applications
-            3. Double-click Hush — it should open normally (fully signed & notarized)
+            3. Double-click Hush — opens without any security warnings
 
             ### Windows Installation
             Run the `.exe` installer. If Windows Defender SmartScreen warns you, click **More info → Run anyway**.
           releaseDraft: false
           prerelease: false
           args: --target ${{ matrix.target }}
+
+      # ── macOS: notarize the .dmg and re-upload the stapled version ──
+      # continue-on-error so the release still succeeds if Apple's API is down
+      - name: Notarize and staple macOS .dmg
+        if: runner.os == 'macOS'
+        continue-on-error: true
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          DMG=$(find src-tauri/target/${{ matrix.target }}/release/bundle/dmg -name "*.dmg" 2>/dev/null | head -1)
+          if [ -z "$DMG" ]; then
+            echo "No .dmg found — skipping notarization"
+            exit 0
+          fi
+          echo "Notarizing: $DMG"
+
+          xcrun notarytool submit "$DMG" \
+            --apple-id "$APPLE_ID" \
+            --password "$APPLE_PASSWORD" \
+            --team-id "$APPLE_TEAM_ID" \
+            --wait
+
+          xcrun stapler staple "$DMG"
+          echo "Stapling complete — re-uploading notarized .dmg to release"
+
+          gh release upload "${{ github.ref_name }}" "$DMG" \
+            --repo "${{ github.repository }}" \
+            --clobber
 
       # ── macOS: always clean up the temp keychain ──
       - name: Clean up keychain
