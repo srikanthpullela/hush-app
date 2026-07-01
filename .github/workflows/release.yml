@@ -43,10 +43,46 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # ── macOS: import Developer ID certificate into a temp keychain ──
+      - name: Import Apple Developer certificate
+        if: runner.os == 'macOS'
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          CERT_PATH=$RUNNER_TEMP/certificate.p12
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+
+          echo -n "$APPLE_CERTIFICATE" | base64 --decode -o "$CERT_PATH"
+
+          # Create a dedicated temporary keychain
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          # Import the certificate and allow codesign to use it without prompting
+          security import "$CERT_PATH" \
+            -P "$APPLE_CERTIFICATE_PASSWORD" \
+            -A -t cert -f pkcs12 \
+            -k "$KEYCHAIN_PATH"
+          security set-key-partition-list \
+            -S apple-tool:,apple: \
+            -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          # Add temp keychain to the search list
+          security list-keychain -d user -s "$KEYCHAIN_PATH"
+
       - name: Build Tauri app
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # ── Apple signing (macOS only — ignored on Windows) ──
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          # ── Apple notarization ──
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         with:
           tagName: ${{ github.ref_name }}
           releaseName: "Hush ${{ github.ref_name }}"
@@ -54,19 +90,20 @@ jobs:
             Download Hush for your platform below.
 
             ### macOS Installation
-            1. Download the `.dmg` for your Mac (Apple Silicon → `aarch64`, Intel → `x64`)
-            2. Open the `.dmg` and drag **Hush.app** to your Applications folder
-            3. Because Hush is not yet notarized with Apple, macOS may block the first launch.
-               **To allow it:** open **System Settings → Privacy & Security**, scroll down, and click **"Open Anyway"** next to Hush.
-
-            If you see a _"damaged"_ error instead, run this once in Terminal:
-            ```
-            sudo xattr -cr /Applications/Hush.app
-            ```
-            Then double-click Hush again.
+            1. Download the `.dmg` for your Mac  
+               (Apple Silicon → `aarch64`, Intel → `x64`)
+            2. Open the `.dmg` and drag **Hush.app** to Applications
+            3. Double-click Hush — it should open normally (fully signed & notarized)
 
             ### Windows Installation
             Run the `.exe` installer. If Windows Defender SmartScreen warns you, click **More info → Run anyway**.
           releaseDraft: false
           prerelease: false
           args: --target ${{ matrix.target }}
+
+      # ── macOS: always clean up the temp keychain ──
+      - name: Clean up keychain
+        if: always() && runner.os == 'macOS'
+        run: |
+          security delete-keychain $RUNNER_TEMP/app-signing.keychain-db || true
+
