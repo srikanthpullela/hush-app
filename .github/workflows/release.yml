@@ -50,7 +50,23 @@ jobs:
         with:
           tagName: ${{ github.ref_name }}
           releaseName: "Hush ${{ github.ref_name }}"
-          releaseBody: "Download Hush for your platform below."
+          releaseBody: |
+            Download Hush for your platform below.
+
+            ### macOS Installation
+            1. Download the `.dmg` for your Mac (Apple Silicon → `aarch64`, Intel → `x64`)
+            2. Open the `.dmg` and drag **Hush.app** to your Applications folder
+            3. Because Hush is not yet notarized with Apple, macOS may block the first launch.
+               **To allow it:** open **System Settings → Privacy & Security**, scroll down, and click **"Open Anyway"** next to Hush.
+
+            If you see a _"damaged"_ error instead, run this once in Terminal:
+            ```
+            sudo xattr -cr /Applications/Hush.app
+            ```
+            Then double-click Hush again.
+
+            ### Windows Installation
+            Run the `.exe` installer. If Windows Defender SmartScreen warns you, click **More info → Run anyway**.
           releaseDraft: false
           prerelease: false
           args: --target ${{ matrix.target }}
