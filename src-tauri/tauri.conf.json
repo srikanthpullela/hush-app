@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Hush",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "identifier": "com.hush.app",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -25,7 +25,7 @@
     "trayIcon": {
       "id": "hush-tray",
       "iconPath": "icons/tray-normal.png",
-      "iconAsTemplate": false,
+      "iconAsTemplate": true,
       "tooltip": "Hush — Notifications On"
     },
     "security": {
