@@ -100,3 +100,38 @@ jobs:
         run: |
           security delete-keychain $RUNNER_TEMP/app-signing.keychain-db || true
 
+  # ── Upload fixed-name aliases so /releases/latest/download/ URLs never break ──
+  aliases:
+    name: Upload fixed-name download aliases
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Upload fixed-name aliases
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          # Download each versioned asset, rename to a fixed name, re-upload
+          declare -A ALIASES=(
+            ["Hush_${TAG#v}_aarch64.dmg"]="Hush-mac-apple-silicon.dmg"
+            ["Hush_${TAG#v}_x64.dmg"]="Hush-mac-intel.dmg"
+            ["Hush_${TAG#v}_x64-setup.exe"]="Hush-windows-setup.exe"
+          )
+          for src in "${!ALIASES[@]}"; do
+            dest="${ALIASES[$src]}"
+            echo "Downloading $src → renaming to $dest"
+            if gh release download "$TAG" \
+                --repo "$GITHUB_REPOSITORY" \
+                --pattern "$src" \
+                --output "$dest" 2>/dev/null; then
+              gh release upload "$TAG" \
+                --repo "$GITHUB_REPOSITORY" \
+                --clobber \
+                "$dest"
+              echo "✅ Uploaded $dest"
+            else
+              echo "⚠️  $src not found in release (skipping)"
+            fi
+          done
