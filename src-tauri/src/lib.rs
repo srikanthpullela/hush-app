@@ -18,6 +18,8 @@ static AUTO_HUSHED_BY_MEETING: AtomicBool = AtomicBool::new(false);
 static MANUAL_OVERRIDE: AtomicBool = AtomicBool::new(false);
 /// Prevents starting multiple poll loops.
 static POLL_STARTED: AtomicBool = AtomicBool::new(false);
+/// Prevents overlapping toggle threads (e.g. rapid clicks or poll racing a manual toggle).
+static TOGGLE_IN_PROGRESS: AtomicBool = AtomicBool::new(false);
 
 fn set_tray_icon(app: &AppHandle, icon_file: &str, tooltip: &str) {
     if let Some(tray) = app.tray_by_id("hush-tray") {
@@ -74,15 +76,38 @@ fn show_setup_window(app: &AppHandle) {
 }
 
 fn toggle_hush(app: &AppHandle, force_state: Option<bool>) {
+    let is_auto = force_state.is_some();
+
     // Check if shortcuts exist before attempting toggle
     if needs_setup() {
-        show_setup_window(app);
+        if is_auto {
+            // Auto (poll-driven) toggle: don't steal focus every cycle —
+            // just log and keep the auto-hush flag consistent with reality.
+            eprintln!("[Hush] Auto-toggle skipped — shortcuts not set up");
+            AUTO_HUSHED_BY_MEETING.store(!force_state.unwrap(), Ordering::Relaxed);
+        } else {
+            show_setup_window(app);
+        }
         return;
     }
+
+    // Shortcuts exist — make sure meeting detection is running (covers the
+    // case where the user created shortcuts after dismissing the setup window)
+    start_meeting_poll(app.clone());
 
     let current = IS_HUSHED.load(Ordering::Relaxed);
     let new_state = force_state.unwrap_or(!current);
     if new_state == current {
+        return;
+    }
+
+    // Don't start a second toggle while one is still running
+    if TOGGLE_IN_PROGRESS.swap(true, Ordering::Relaxed) {
+        eprintln!("[Hush] Toggle already in progress — skipping");
+        if is_auto {
+            // Keep flag consistent so the poll loop retries next cycle
+            AUTO_HUSHED_BY_MEETING.store(!new_state, Ordering::Relaxed);
+        }
         return;
     }
 
@@ -110,9 +135,15 @@ fn toggle_hush(app: &AppHandle, force_state: Option<bool>) {
         } else {
             // Revert on failure
             IS_HUSHED.store(!new_state, Ordering::Relaxed);
+            if is_auto {
+                // Restore the auto-hush flag so the poll loop retries:
+                // failed auto-ON → not auto-hushed; failed auto-OFF → still auto-hushed
+                AUTO_HUSHED_BY_MEETING.store(!new_state, Ordering::Relaxed);
+            }
             update_tray_icon(&app_handle, !new_state);
             build_and_set_menu(&app_handle);
         }
+        TOGGLE_IN_PROGRESS.store(false, Ordering::Relaxed);
     });
 }
 
@@ -199,13 +230,14 @@ fn start_meeting_poll(app: AppHandle) {
                 continue;
             }
 
-            // Auto-hush ON: screen sharing detected for 15s straight
+            // Auto-hush ON: meeting detected for DEBOUNCE_COUNT consecutive polls
             if in_meeting && !hushed && consecutive_meeting >= DEBOUNCE_COUNT {
                 eprintln!("[Hush] AUTO-HUSH ON — meeting detected for {}s", consecutive_meeting * 3);
                 AUTO_HUSHED_BY_MEETING.store(true, Ordering::Relaxed);
                 toggle_hush(&app, Some(true));
             }
-            // Auto-hush OFF: screen sharing stopped for 15s AND we were the ones who turned it on
+            // Auto-hush OFF: meeting ended for DEBOUNCE_COUNT consecutive polls
+            // AND we were the ones who turned DND on
             else if !in_meeting && hushed && auto_hushed && consecutive_no_meeting >= DEBOUNCE_COUNT {
                 eprintln!("[Hush] AUTO-HUSH OFF — meeting ended for {}s", consecutive_no_meeting * 3);
                 AUTO_HUSHED_BY_MEETING.store(false, Ordering::Relaxed);
@@ -266,6 +298,30 @@ pub fn run() {
             setup_complete,
         ])
         .setup(|app| {
+            // Register the global menu event handler ONCE.
+            // (Registering inside build_and_set_menu appended a new handler on
+            // every rebuild, making each click fire multiple times.)
+            app.on_menu_event(move |app_h, event: MenuEvent| match event.id().as_ref() {
+                "toggle" => toggle_hush(app_h, None),
+                "auto_screen_share" => {
+                    let current = AUTO_DND_SCREEN_SHARE.load(Ordering::Relaxed);
+                    AUTO_DND_SCREEN_SHARE.store(!current, Ordering::Relaxed);
+                    eprintln!("[Hush] Auto-DND on Calls: {}", !current);
+                }
+                "play_sound" => {
+                    let current = PLAY_SOUND.load(Ordering::Relaxed);
+                    PLAY_SOUND.store(!current, Ordering::Relaxed);
+                }
+                "quit" => {
+                    // If we turned DND on (auto or manual), turn it off before quitting
+                    if IS_HUSHED.load(Ordering::Relaxed) {
+                        let _ = dnd::set_dnd(false);
+                    }
+                    app_h.exit(0);
+                }
+                _ => {}
+            });
+
             // Set up tray icon click handler
             if let Some(tray) = app.tray_by_id("hush-tray") {
                 // Build and attach the menu so right-click shows it
@@ -361,25 +417,5 @@ fn build_and_set_menu(app: &AppHandle) {
     if let Some(tray) = app.tray_by_id("hush-tray") {
         let _ = tray.set_menu(Some(menu));
     }
-
-    app.on_menu_event(move |app_h, event: MenuEvent| match event.id().as_ref() {
-        "toggle" => toggle_hush(app_h, None),
-        "auto_screen_share" => {
-            let current = AUTO_DND_SCREEN_SHARE.load(Ordering::Relaxed);
-            AUTO_DND_SCREEN_SHARE.store(!current, Ordering::Relaxed);
-            eprintln!("[Hush] Auto-DND on Calls: {}", !current);
-        }
-        "play_sound" => {
-            let current = PLAY_SOUND.load(Ordering::Relaxed);
-            PLAY_SOUND.store(!current, Ordering::Relaxed);
-        }
-        "quit" => {
-            if IS_HUSHED.load(Ordering::Relaxed) {
-                let _ = dnd::set_dnd(false);
-            }
-            app_h.exit(0);
-        }
-        _ => {}
-    });
 }
 
