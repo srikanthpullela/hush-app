@@ -179,10 +179,15 @@ fn start_meeting_poll(app: AppHandle) {
         return;
     }
     std::thread::spawn(move || {
-        // Debounce: require 2 consecutive matching polls (6s) before toggling.
+        // Enable DND quickly (2 polls × 3s = 6s) but disable slowly (10 polls × 3s = 30s).
+        // The slow OFF threshold is intentional: when muted in Teams the mic signal
+        // drops and the window title often isn't "meeting", so we get brief false
+        // negatives mid-call. 30s of consecutive "no meeting" is required before
+        // we decide the call actually ended.
         let mut consecutive_meeting = 0u32;
         let mut consecutive_no_meeting = 0u32;
-        const DEBOUNCE_COUNT: u32 = 2;
+        const DEBOUNCE_ON_COUNT: u32 = 2;   // 6s  — fast to enable DND
+        const DEBOUNCE_OFF_COUNT: u32 = 10; // 30s — slow to disable DND
 
         let mut last_poll = std::time::Instant::now();
 
@@ -219,7 +224,7 @@ fn start_meeting_poll(app: AppHandle) {
                 consecutive_meeting = 0;
                 // Screen sharing stopped — clear manual override so next
                 // screen share session will auto-hush again
-                if MANUAL_OVERRIDE.load(Ordering::Relaxed) && consecutive_no_meeting >= DEBOUNCE_COUNT {
+                if MANUAL_OVERRIDE.load(Ordering::Relaxed) && consecutive_no_meeting >= DEBOUNCE_OFF_COUNT {
                     MANUAL_OVERRIDE.store(false, Ordering::Relaxed);
                     eprintln!("[Hush] Manual override cleared — ready for next meeting");
                 }
@@ -230,15 +235,16 @@ fn start_meeting_poll(app: AppHandle) {
                 continue;
             }
 
-            // Auto-hush ON: meeting detected for DEBOUNCE_COUNT consecutive polls
-            if in_meeting && !hushed && consecutive_meeting >= DEBOUNCE_COUNT {
+            // Auto-hush ON: meeting detected for DEBOUNCE_ON_COUNT consecutive polls (6s)
+            if in_meeting && !hushed && consecutive_meeting >= DEBOUNCE_ON_COUNT {
                 eprintln!("[Hush] AUTO-HUSH ON — meeting detected for {}s", consecutive_meeting * 3);
                 AUTO_HUSHED_BY_MEETING.store(true, Ordering::Relaxed);
                 toggle_hush(&app, Some(true));
             }
-            // Auto-hush OFF: meeting ended for DEBOUNCE_COUNT consecutive polls
-            // AND we were the ones who turned DND on
-            else if !in_meeting && hushed && auto_hushed && consecutive_no_meeting >= DEBOUNCE_COUNT {
+            // Auto-hush OFF: meeting ended for DEBOUNCE_OFF_COUNT consecutive polls (30s)
+            // AND we were the ones who turned DND on.
+            // 30s threshold tolerates brief mic drops (mute) + window title misses mid-call.
+            else if !in_meeting && hushed && auto_hushed && consecutive_no_meeting >= DEBOUNCE_OFF_COUNT {
                 eprintln!("[Hush] AUTO-HUSH OFF — meeting ended for {}s", consecutive_no_meeting * 3);
                 AUTO_HUSHED_BY_MEETING.store(false, Ordering::Relaxed);
                 toggle_hush(&app, Some(false));

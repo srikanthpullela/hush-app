@@ -7,18 +7,24 @@ static DETECTOR_BIN: OnceLock<Option<PathBuf>> = OnceLock::new();
 /// Swift detection script — compiled to a binary on first run for speed.
 ///
 /// Checks two signals (in priority order):
-///   1. Meeting app window title contains "meeting" → in a meeting/call
+///   1. Meeting app window title contains a call/meeting keyword → in a meeting
 ///   2. Meeting app running + system microphone active → on a call
 ///
-/// NOT used: layer-3 overlay windows (proven stale on macOS 26 — they
-/// persist long after the meeting ends, causing false DND activation).
+/// Keywords cover common meeting types so calls named "Weekly Sync",
+/// "1:1", "Standup", etc. are detected even without the word "meeting".
 const DETECT_SCRIPT: &str = r#"
 import CoreGraphics
 import CoreAudio
 import Foundation
 
 let list = CGWindowListCopyWindowInfo([.optionAll], kCGNullWindowID) as? [[String: Any]] ?? []
-let meetingApps = ["Microsoft Teams", "zoom.us", "Zoom", "Webex", "Cisco Webex", "Slack", "FaceTime"]
+let meetingApps = ["Microsoft Teams", "zoom.us", "Zoom", "Webex", "Cisco Webex", "Slack", "FaceTime", "Google Meet"]
+
+// Keywords that strongly indicate an active call/meeting window.
+// Intentionally broad so that "Weekly Sync", "1:1 Call", "Standup", etc. match.
+let callKeywords = ["meeting", "call", "standup", "stand-up", "sync", "webinar",
+                    "conference", "interview", "1:1", "one-on-one", "hangout", "video chat"]
+
 var hasMeetingWindow = false
 var meetingAppRunning = false
 
@@ -28,7 +34,7 @@ for w in list {
     let isMeetingApp = meetingApps.contains(where: { owner.contains($0) })
     guard isMeetingApp else { continue }
     meetingAppRunning = true
-    if name.contains("meeting") { hasMeetingWindow = true }
+    if callKeywords.contains(where: { name.contains($0) }) { hasMeetingWindow = true }
 }
 
 var micInUse = false
