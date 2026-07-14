@@ -1,6 +1,6 @@
 [package]
 name = "hush-app"
-version = "1.0.8"
+version = "1.0.9"
 description = "Hush — One-click notification silencer"
 authors = ["Srikanth Pullela"]
 edition = "2021"

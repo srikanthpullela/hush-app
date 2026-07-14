@@ -6,37 +6,64 @@ static DETECTOR_BIN: OnceLock<Option<PathBuf>> = OnceLock::new();
 
 /// Swift detection script — compiled to a binary on first run for speed.
 ///
-/// Checks two signals (in priority order):
-///   1. Meeting app window title contains a call/meeting keyword → in a meeting
-///   2. Meeting app running + system microphone active → on a call
+/// Three independent signals — any one is sufficient to consider "in a call":
+///   1. Meeting app window title contains a call keyword
+///   2. Meeting app has a floating call-controls bar onscreen (Teams/Zoom compact toolbar)
+///   3. System microphone is active while a meeting app is running
 ///
-/// Keywords cover common meeting types so calls named "Weekly Sync",
-/// "1:1", "Standup", etc. are detected even without the word "meeting".
+/// Signal 2 is the most reliable for Teams: the floating bar (Camera/Mic/Share/Leave)
+/// is ALWAYS present during a call, even when mic and camera are both muted/off.
+/// Teams releases the mic device when the user mutes (for privacy), so signal 3
+/// alone is not enough — we need the call bar as a fallback.
 const DETECT_SCRIPT: &str = r#"
 import CoreGraphics
 import CoreAudio
 import Foundation
 
 let list = CGWindowListCopyWindowInfo([.optionAll], kCGNullWindowID) as? [[String: Any]] ?? []
-let meetingApps = ["Microsoft Teams", "zoom.us", "Zoom", "Webex", "Cisco Webex", "Slack", "FaceTime", "Google Meet"]
 
-// Keywords that strongly indicate an active call/meeting window.
-// Intentionally broad so that "Weekly Sync", "1:1 Call", "Standup", etc. match.
+let meetingApps = ["Microsoft Teams", "zoom.us", "Zoom", "Webex", "Cisco Webex",
+                   "Slack", "FaceTime", "Google Meet"]
+
+// Window title keywords indicating an active call/meeting.
+// Broad intentionally — "Weekly Sync", "1:1 with John", "Standup" etc.
 let callKeywords = ["meeting", "call", "standup", "stand-up", "sync", "webinar",
                     "conference", "interview", "1:1", "one-on-one", "hangout", "video chat"]
 
 var hasMeetingWindow = false
+var hasCallBar        = false   // floating compact call-controls window
 var meetingAppRunning = false
 
 for w in list {
-    let owner = w["kCGWindowOwnerName"] as? String ?? ""
-    let name = (w["kCGWindowName"] as? String ?? "").lowercased()
-    let isMeetingApp = meetingApps.contains(where: { owner.contains($0) })
-    guard isMeetingApp else { continue }
+    let owner    = w["kCGWindowOwnerName"] as? String ?? ""
+    let name     = (w["kCGWindowName"] as? String ?? "").lowercased()
+    let onscreen = w["kCGWindowIsOnscreen"] as? Bool ?? false
+    let alpha    = (w["kCGWindowAlpha"] as? NSNumber)?.doubleValue ?? 0
+
+    guard meetingApps.contains(where: { owner.contains($0) }) else { continue }
     meetingAppRunning = true
-    if callKeywords.contains(where: { name.contains($0) }) { hasMeetingWindow = true }
+
+    // Signal 1: keyword in window title
+    if callKeywords.contains(where: { name.contains($0) }) {
+        hasMeetingWindow = true
+    }
+
+    // Signal 2: floating call-controls bar (Teams / Zoom compact toolbar).
+    // When in a call, meeting apps show a narrow floating toolbar:
+    //   • onscreen and visible (alpha > 0)
+    //   • height: 40–200 px  (it's a strip, not a full window)
+    //   • width: > 450 px    (wider than notification banners ~360 px)
+    // This bar disappears the moment you leave the call.
+    if onscreen && alpha > 0, let bounds = w["kCGWindowBounds"] as? [String: Any] {
+        let h  = (bounds["Height"] as? NSNumber)?.doubleValue ?? 0
+        let wd = (bounds["Width"]  as? NSNumber)?.doubleValue ?? 0
+        if h > 40 && h < 200 && wd > 450 {
+            hasCallBar = true
+        }
+    }
 }
 
+// Signal 3: default microphone in use (fails when user is muted in Teams)
 var micInUse = false
 if meetingAppRunning {
     var dev: AudioDeviceID = 0
@@ -46,9 +73,7 @@ if meetingAppRunning {
         mScope: kAudioObjectPropertyScopeGlobal,
         mElement: kAudioObjectPropertyElementMain
     )
-    AudioObjectGetPropertyData(
-        AudioObjectID(kAudioObjectSystemObject), &a1, 0, nil, &sz, &dev
-    )
+    AudioObjectGetPropertyData(AudioObjectID(kAudioObjectSystemObject), &a1, 0, nil, &sz, &dev)
     var running: UInt32 = 0
     sz = UInt32(MemoryLayout<UInt32>.size)
     var a2 = AudioObjectPropertyAddress(
@@ -62,7 +87,8 @@ if meetingAppRunning {
 
 var signals: [String] = []
 if hasMeetingWindow { signals.append("meeting-window") }
-if micInUse { signals.append("mic-active") }
+if hasCallBar       { signals.append("call-bar") }
+if micInUse         { signals.append("mic-active") }
 
 if meetingAppRunning && !signals.isEmpty {
     print("active:\(signals.joined(separator: ","))")
