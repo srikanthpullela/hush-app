@@ -20,6 +20,15 @@ static MANUAL_OVERRIDE: AtomicBool = AtomicBool::new(false);
 static POLL_STARTED: AtomicBool = AtomicBool::new(false);
 /// Prevents overlapping toggle threads (e.g. rapid clicks or poll racing a manual toggle).
 static TOGGLE_IN_PROGRESS: AtomicBool = AtomicBool::new(false);
+/// Tracks when the current continuous auto-hush streak began.
+/// Used by the safety net below to recover from a stuck "in meeting" signal.
+static AUTO_HUSH_STARTED: std::sync::Mutex<Option<std::time::Instant>> = std::sync::Mutex::new(None);
+/// Hard ceiling on how long auto-hush may stay on continuously. No real
+/// meeting runs this long — if detection ever gets stuck "on" (e.g. a stale
+/// overlay/floating window entry that never disappears, a known risk on
+/// some macOS versions), this forces DND back off instead of leaving it
+/// hushed indefinitely.
+const MAX_AUTO_HUSH_SECS: u64 = 4 * 60 * 60; // 4 hours
 
 fn set_tray_icon(app: &AppHandle, icon_file: &str, tooltip: &str) {
     if let Some(tray) = app.tray_by_id("hush-tray") {
@@ -215,6 +224,30 @@ fn start_meeting_poll(app: AppHandle) {
             let in_meeting = meeting::is_in_meeting();
             let hushed = IS_HUSHED.load(Ordering::Relaxed);
             let auto_hushed = AUTO_HUSHED_BY_MEETING.load(Ordering::Relaxed);
+
+            // Safety net: if auto-hush has been continuously active for longer
+            // than any real meeting would run, force it off. This protects
+            // against the detector getting stuck reporting "in meeting" (e.g.
+            // a stale floating call-bar window entry that never clears).
+            if auto_hushed {
+                let mut started = AUTO_HUSH_STARTED.lock().unwrap();
+                let start_time = *started.get_or_insert_with(std::time::Instant::now);
+                if start_time.elapsed().as_secs() > MAX_AUTO_HUSH_SECS {
+                    *started = None;
+                    drop(started);
+                    eprintln!(
+                        "[Hush] Safety net: auto-hush active >{}h straight — forcing DND off (stuck detection?)",
+                        MAX_AUTO_HUSH_SECS / 3600
+                    );
+                    AUTO_HUSHED_BY_MEETING.store(false, Ordering::Relaxed);
+                    consecutive_meeting = 0;
+                    consecutive_no_meeting = 0;
+                    toggle_hush(&app, Some(false));
+                    continue;
+                }
+            } else {
+                *AUTO_HUSH_STARTED.lock().unwrap() = None;
+            }
 
             if in_meeting {
                 consecutive_meeting += 1;

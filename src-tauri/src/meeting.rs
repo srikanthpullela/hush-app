@@ -49,15 +49,16 @@ for w in list {
     }
 
     // Signal 2: floating call-controls bar (Teams / Zoom compact toolbar).
-    // When in a call, meeting apps show a narrow floating toolbar:
+    // When in a call, meeting apps show a narrow floating toolbar (sometimes
+    // with a small self-view thumbnail attached):
     //   • onscreen and visible (alpha > 0)
-    //   • height: 40–200 px  (it's a strip, not a full window)
+    //   • height: 40–300 px  (a strip/compact panel, not a full window)
     //   • width: > 450 px    (wider than notification banners ~360 px)
     // This bar disappears the moment you leave the call.
     if onscreen && alpha > 0, let bounds = w["kCGWindowBounds"] as? [String: Any] {
         let h  = (bounds["Height"] as? NSNumber)?.doubleValue ?? 0
         let wd = (bounds["Width"]  as? NSNumber)?.doubleValue ?? 0
-        if h > 40 && h < 200 && wd > 450 {
+        if h > 40 && h < 300 && wd > 450 {
             hasCallBar = true
         }
     }
